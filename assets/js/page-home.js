@@ -44,8 +44,13 @@ function renderHome() {
   $('#hero-title').innerHTML = `${esc(h.line1)}<br><em>${esc(h.line2)}</em>`;
   $('#hero-sub').textContent = h.subtitle;
   $('#hero-cta').textContent = h.cta;
-  $('#hero-bar').innerHTML = (h.bar || []).filter(Boolean)
+  const promises = (h.bar || []).filter(Boolean);
+  const bar = $('#hero-bar');
+  bar.innerHTML = promises
     .map((t, i) => `<div><small>0${i + 1} //</small>${esc(String(t).replace('{free}', money(SITE.freeShippingOver)))}</div>`).join('');
+  bar.dataset.count = promises.length;            // lets the layout fit 1–4 promises neatly
+  bar.style.setProperty('--count', Math.max(1, promises.length));
+  bar.hidden = !promises.length;
 
   const words = (SITE.marquee || []).filter(Boolean);
   // Printed twice so the ticker can scroll seamlessly.
