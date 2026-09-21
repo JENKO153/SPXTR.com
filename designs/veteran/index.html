@@ -1,0 +1,283 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Lanny Supply Co. — Veteran Owned Apparel</title>
+  <meta name="description" content="Hard-wearing apparel designed by a 12-year infantry veteran. 10% of every order goes to veteran charities.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Stencil+Display:wght@700;800;900&family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="assets/css/store.css">
+</head>
+<body>
+  <div id="chrome-top"></div>
+
+  <main>
+    <!-- HERO -->
+    <section class="hero">
+      <div class="hero__img"><img src="assets/img/hero-ruck.jpg" alt="A soldier with a full ruck walking out at dusk"></div>
+      <span class="corners"></span>
+      <span class="stamp">Veteran owned &amp; operated</span>
+      <div class="wrap hero__inner">
+        <div class="hero__grid"><span>Grid ref 38S MB 4488 1277</span><span id="hero-issue"></span></div>
+        <h1 class="display">Earned.<br><em>Not issued.</em></h1>
+        <p id="hero-sub"></p>
+        <div class="hero__ctas">
+          <a class="btn" href="shop.html">Shop the gear</a>
+          <a class="btn btn--ghost" href="#story">Read my story</a>
+        </div>
+        <div class="hero__bar" id="hero-bar"></div>
+      </div>
+    </section>
+
+    <!-- TICKER -->
+    <div class="marquee" aria-hidden="true">
+      <div class="marquee__track">
+        <span>No one left behind</span><span>Never forget</span><span>Stay in the fight</span><span>Embrace the suck</span><span>One team, one fight</span>
+        <span>No one left behind</span><span>Never forget</span><span>Stay in the fight</span><span>Embrace the suck</span><span>One team, one fight</span>
+      </div>
+    </div>
+
+    <!-- SEC.01 THE ARMORY -->
+    <section class="section">
+      <div class="wrap">
+        <div class="section-head">
+          <div><span class="eyebrow">Sec. 01 // The armory</span><h2 class="display">Gear up</h2></div>
+          <a href="shop.html" class="link-arrow">View all gear <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 12h16m-6-6 6 6-6 6"/></svg></a>
+        </div>
+        <div class="cats" id="cats"></div>
+      </div>
+    </section>
+
+    <!-- SEC.02 NEW ISSUE -->
+    <section class="section" style="padding-top:0">
+      <div class="wrap">
+        <div class="section-head">
+          <div><span class="eyebrow" id="issue-eyebrow"></span><h2 class="display">New issue</h2><p>Small runs. When it's gone, it's gone. Restocks are never guaranteed.</p></div>
+          <div class="rail-ctrls">
+            <button aria-label="Previous" data-rail="-1"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m15 6-6 6 6 6"/></svg></button>
+            <button aria-label="Next" data-rail="1"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 6 6 6-6 6"/></svg></button>
+          </div>
+        </div>
+        <div class="rail" id="rail"></div>
+      </div>
+    </section>
+
+    <!-- SEC.03 SERVICE RECORD -->
+    <section class="section" id="story" style="padding-top:0">
+      <div class="wrap">
+        <div class="section-head" style="border:0;margin-bottom:24px"><div><span class="eyebrow">Sec. 03 // The founder</span><h2 class="display">Who's behind this</h2></div></div>
+        <div class="dossier">
+          <span class="dossier__tab">Personnel file // Declassified</span>
+          <div class="dossier__photo">
+            <span class="clip"></span>
+            <img src="assets/img/founder.jpg" alt="Lanny, founder of Lanny Supply Co.">
+            <span class="stamp">Honorably discharged</span>
+          </div>
+          <div>
+            <span class="eyebrow">Service record</span>
+            <h2>I spent 12 years in. This is what I built when I got out.</h2>
+            <div class="record" id="record"></div>
+            <p>When I got out, I lost the thing I didn't know I'd miss most: the unit. The people who had your back without you having to ask. I started this company in my garage in {year} with one tee and one idea: make gear that's built as tough as the people who wear it, and use it to look after the ones still struggling.</p>
+            <p>Every design comes from something real, from the 3am watches to the rucks that never seemed to end. Every order sends {give}% to veteran charities. That's not marketing. That's the mission.</p>
+            <div class="sign" id="sign"></div>
+            <a href="#" class="link-arrow">Read the full story <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 12h16m-6-6 6 6-6 6"/></svg></a>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SEC.04 THE MISSION -->
+    <section class="section mission" id="mission">
+      <div class="mission__bg"><img src="assets/img/memorial.jpg" alt="" loading="lazy"></div>
+      <div class="wrap mission__grid">
+        <div>
+          <span class="eyebrow">Sec. 04 // The mission</span>
+          <h2 class="display">Every order.<br><em>Every time.</em></h2>
+          <p id="mission-copy"></p>
+          <a class="btn" href="#">See where it goes</a>
+        </div>
+        <div class="tally">
+          <div class="tally__num" id="tally">$0</div>
+          <div class="tally__label">Given to veteran causes since <span id="since"></span></div>
+          <div class="meter"><i id="meter" style="width:0"></i></div>
+          <div class="meter-row"><span id="pct"></span><span id="goal"></span></div>
+          <div class="pillars">
+            <div><small>01</small>Veteran mental health</div>
+            <div><small>02</small>Transition into civilian work</div>
+            <div><small>03</small>Gold Star families</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SEC.05 MOST REQUESTED -->
+    <section class="section">
+      <div class="wrap">
+        <div class="section-head">
+          <div><span class="eyebrow">Sec. 05 // Most requested</span><h2 class="display">Squad favourites</h2></div>
+          <div class="tabs" role="tablist" id="best-tabs">
+            <button class="tab active" data-c="All">All</button>
+            <button class="tab" data-c="Tees">Tees</button>
+            <button class="tab" data-c="Hoodies">Hoodies</button>
+            <button class="tab" data-c="Headwear">Headwear</button>
+          </div>
+        </div>
+        <div class="products" id="best"></div>
+        <div style="text-align:center;margin-top:52px"><a href="shop.html" class="btn btn--ghost">Shop all gear</a></div>
+      </div>
+    </section>
+
+    <!-- SEC.06 FIELD TESTED -->
+    <section class="section" style="padding-top:0">
+      <div class="wrap field">
+        <div class="field__imgs">
+          <div><img src="assets/img/fog-patrol.jpg" alt="" loading="lazy"><span class="corners"></span></div>
+          <div><img src="assets/img/boots-worn.jpg" alt="" loading="lazy"></div>
+          <div><img src="assets/img/ruck-gear.jpg" alt="" loading="lazy"></div>
+        </div>
+        <div class="spec">
+          <span class="eyebrow">Sec. 06 // Field tested</span>
+          <h2 class="display">Built to take a beating</h2>
+          <p>No thin fast-fashion blanks. Everything is spec'd, sampled and worn hard before it gets issued to you.</p>
+          <table>
+            <tr><td>Fabric weight</td><td>280–450 GSM heavyweight</td></tr>
+            <tr><td>Construction</td><td>Double-needle, bar-tacked stress points</td></tr>
+            <tr><td>Print</td><td>Screen printed, never peels</td></tr>
+            <tr><td>Wash test</td><td>50+ cycles, pre-shrunk</td></tr>
+            <tr><td>Guarantee</td><td>Lifetime on every seam</td></tr>
+          </table>
+          <a class="btn" href="shop.html">Gear up</a>
+        </div>
+      </div>
+    </section>
+
+    <!-- SEC.07 FIELD REPORTS -->
+    <section class="section" style="padding-top:0">
+      <div class="wrap">
+        <div class="section-head">
+          <div><span class="eyebrow">Sec. 07 // Field reports</span><h2 class="display">From the unit</h2></div>
+          <a href="#" class="link-arrow" id="ig-handle">Follow <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 12h16m-6-6 6 6-6 6"/></svg></a>
+        </div>
+        <div class="reports">
+          <blockquote class="report"><div class="report__top"><span class="stars">★★★★★</span><span class="verified">✔ Verified vet</span></div><q>Heaviest tee I own. Two years of weekly washes and the print still looks new. Buying for my whole old platoon.</q><footer><i>MH</i><div>Mike H.<small>Army veteran // 9 orders</small></div></footer></blockquote>
+          <blockquote class="report"><div class="report__top"><span class="stars">★★★★★</span><span class="verified">✔ Verified</span></div><q>Bought the hoodie for my husband while he was deployed. Knowing 10% went to vets made it an easy yes.</q><footer><i>SM</i><div>Sarah M.<small>Military spouse // 5 orders</small></div></footer></blockquote>
+          <blockquote class="report"><div class="report__top"><span class="stars">★★★★★</span><span class="verified">✔ Verified vet</span></div><q>Finally a vet brand that isn't just a skull and a flag. Clean designs, proper quality, and a founder who actually served.</q><footer><i>CW</i><div>Chris W.<small>Veteran // 14 orders</small></div></footer></blockquote>
+        </div>
+        <div class="ig">
+          <a href="#"><img src="assets/img/vet-salute.jpg" alt="" loading="lazy"></a>
+          <a href="#"><img src="assets/img/tee-back.jpg" alt="" loading="lazy"></a>
+          <a href="#"><img src="assets/img/homecoming.jpg" alt="" loading="lazy"></a>
+          <a href="#"><img src="assets/img/hood-desert.jpg" alt="" loading="lazy"></a>
+          <a href="#"><img src="assets/img/dogtag.jpg" alt="" loading="lazy"></a>
+          <a href="#"><img src="assets/img/field-kit.jpg" alt="" loading="lazy"></a>
+        </div>
+      </div>
+    </section>
+
+    <!-- MILITARY DISCOUNT -->
+    <section class="served">
+      <div class="wrap">
+        <div><h3 id="served-title"></h3><p>Veterans, active duty, reservists, military families &amp; first responders. Verify once, save forever.</p></div>
+        <a class="btn" href="#">Verify my status</a>
+      </div>
+    </section>
+
+    <!-- NEWSLETTER -->
+    <section class="section newsletter">
+      <div class="newsletter__bg"><img src="assets/img/camo.jpg" alt="" loading="lazy"></div>
+      <div class="wrap">
+        <span class="eyebrow">Sec. 08 // Comms</span>
+        <h2 class="display">Join the unit</h2>
+        <p>First access to every new issue, restock alerts, and 10% off your first order. No spam. We hate it too.</p>
+        <form id="news">
+          <input type="email" required placeholder="Enter your email" aria-label="Email address">
+          <button type="submit">Enlist</button>
+        </form>
+        <div class="fine">Unsubscribe any time. No hard feelings.</div>
+      </div>
+    </section>
+  </main>
+
+  <div id="chrome-bottom"></div>
+
+  <script src="assets/js/data.js"></script>
+  <script src="assets/js/store.js"></script>
+  <script>
+    renderChrome();
+    const products = liveProducts();
+    const S = STORE.service;
+
+    // hero
+    $('#hero-issue').textContent = `Est. ${STORE.est} // ${STORE.currentIssue}`;
+    $('#hero-sub').textContent = `Hard-wearing gear designed by a ${S.years}-year ${S.role.toLowerCase()} veteran. Made for those who served, and the people who stand beside them.`;
+    $('#hero-bar').innerHTML = [
+      ['01', `Designed by a ${S.years}-yr vet`],
+      ['02', 'Heavyweight. Built to last'],
+      ['03', `${STORE.giveBackPercent}% to veteran charities`],
+      ['04', `${STORE.militaryDiscount}% off if you served`],
+    ].map(([n, t]) => `<div><small>${n} //</small>${t}</div>`).join('');
+
+    // armory
+    const cats = [['Tees', 'tee-man.jpg'], ['Hoodies', 'hood-desert.jpg'], ['Outerwear', 'jkt-m65-b.jpg'], ['Headwear', 'cap-black.jpg'], ['Gear', 'field-kit.jpg']];
+    $('#cats').innerHTML = cats.map(([c, img], i) => {
+      const n = products.filter(p => p.category === c).length;
+      return `<a class="cat" href="shop.html?category=${c}"><img src="assets/img/${img}" alt="${c}" loading="lazy"><span class="corners"></span>
+        <div class="cat__label"><div><span class="code">Cat-0${i + 1} // ${n} items</span><h3>${c}</h3></div><span class="go">Deploy →</span></div></a>`;
+    }).join('');
+
+    // new issue rail
+    $('#issue-eyebrow').textContent = `Sec. 02 // ${STORE.currentIssue}`;
+    $('#rail').innerHTML = products.filter(p => p.isNew).map(productCard).join('');
+    $$('[data-rail]').forEach(b => b.onclick = () => {
+      const r = $('#rail'); r.scrollBy({ left: r.clientWidth * 0.75 * +b.dataset.rail, behavior: 'smooth' });
+    });
+
+    // service record
+    $('#record').innerHTML = [
+      ['Name', `${STORE.founder.toUpperCase()} <span class="redact">XXXXXXX</span>`],
+      ['Role', S.role],
+      ['Years served', S.years],
+      ['Deployments', S.tours],
+      ['Discharged', `${S.out}, honorable`],
+      ['Current mission', STORE.name],
+    ].map(([k, v]) => `<div><small>${k}</small>${v}</div>`).join('');
+    $$('.dossier p').forEach(p => p.innerHTML = p.innerHTML.replace('{year}', STORE.est).replace('{give}', STORE.giveBackPercent));
+    $('#sign').innerHTML = `${STORE.founder}<small>Founder // ${S.role} veteran</small>`;
+
+    // mission tally (counts up when scrolled into view)
+    $('#mission-copy').textContent = `${STORE.giveBackPercent}% of every order goes straight to organisations supporting veterans and their families. Not "a portion of profits". ${STORE.giveBackPercent}% of every sale, reported every quarter.`;
+    $('#since').textContent = STORE.est;
+    const pct = Math.round(STORE.donated / STORE.donationGoal * 100);
+    $('#pct').textContent = `${pct}% of ${new Date().getFullYear()} goal`;
+    $('#goal').textContent = `Goal ${money(STORE.donationGoal)}`;
+    new IntersectionObserver(([e], obs) => {
+      if (!e.isIntersecting) return; obs.disconnect();
+      const t0 = performance.now();
+      const step = t => {
+        const k = Math.min(1, (t - t0) / 1600), ease = 1 - Math.pow(1 - k, 3);
+        $('#tally').textContent = money(Math.round(STORE.donated * ease));
+        $('#meter').style.width = pct * ease + '%';
+        if (k < 1) requestAnimationFrame(step);
+      };
+      requestAnimationFrame(step);
+    }, { threshold: .4 }).observe($('.tally'));
+
+    // squad favourites
+    const renderBest = c => {
+      const list = products.filter(p => c === 'All' || p.category === c).sort((a, b) => b.reviews - a.reviews).slice(0, 8);
+      $('#best').innerHTML = list.map(productCard).join('');
+    };
+    renderBest('All');
+    $$('#best-tabs .tab').forEach(t => t.onclick = () => {
+      $$('#best-tabs .tab').forEach(x => x.classList.toggle('active', x === t));
+      renderBest(t.dataset.c);
+    });
+
+    $('#ig-handle').firstChild.textContent = STORE.instagram + ' ';
+    $('#served-title').textContent = `Served? ${STORE.militaryDiscount}% off. Always.`;
+    $('#news').onsubmit = e => { e.preventDefault(); e.target.reset(); toast('Welcome to the unit. Check your inbox for 10% off'); };
+  </script>
+</body>
+</html>

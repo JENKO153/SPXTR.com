@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="referrer" content="no-referrer">
+  <title>Admin login — SPXTR</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Stencil+Display:wght@800;900&family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/assets/css/admin.css">
+  <script src="/assets/js/accent.js"></script>
+</head>
+<body class="auth-page">
+  <main class="auth">
+    <div class="auth__brand">
+      <img src="/assets/brand/spxtr-ghost.jpg" alt="" class="auth__ghost">
+      <img src="/assets/brand/spxtr-wordmark.jpg" alt="SPXTR" class="auth__word">
+      <span class="auth__tag">Admin</span>
+    </div>
+
+    <div class="auth__card">
+      <div class="notice notice--demo" id="demoNotice" hidden></div>
+      <div class="notice notice--error" id="formError" role="alert" hidden></div>
+
+      <!-- Step 1: email + password -->
+      <form id="loginForm" class="auth__step" autocomplete="on">
+        <h1>Sign in</h1>
+        <p class="muted">Store owner access only.</p>
+        <label>Email<input type="email" id="email" required autocomplete="username" maxlength="200" spellcheck="false"></label>
+        <label>Password<input type="password" id="password" required autocomplete="current-password" maxlength="200"></label>
+        <div id="captcha"></div>
+        <button type="submit" class="btn btn--block">Sign in</button>
+      </form>
+
+      <!-- Step 2: authenticator code -->
+      <form id="mfaForm" class="auth__step" hidden>
+        <h1>Enter your code</h1>
+        <p class="muted">Open your authenticator app and type the 6-digit code for SPXTR.</p>
+        <label>6-digit code<input id="mfaCode" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" required class="code-input"></label>
+        <button type="submit" class="btn btn--block">Verify</button>
+        <button type="button" class="link" data-cancel>Use a different account</button>
+      </form>
+
+      <!-- Step 3: first-time authenticator setup -->
+      <form id="enrollForm" class="auth__step" hidden>
+        <h1>Protect this account</h1>
+        <p class="muted">Admin access needs an authenticator app (Google Authenticator, 1Password, Authy…). Scan this code, then enter the 6 digits it shows.</p>
+        <div class="qr"><img id="qrImg" alt="Authenticator QR code"></div>
+        <p class="secret">Can't scan? Enter this key: <code id="qrSecret"></code></p>
+        <label>6-digit code<input id="enrollCode" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" required class="code-input"></label>
+        <button type="submit" class="btn btn--block">Turn on and continue</button>
+        <button type="button" class="link" data-cancel>Cancel</button>
+      </form>
+
+      <p class="auth__back"><a href="/">&larr; Back to the store</a></p>
+    </div>
+    <p class="auth__fine">Protected by row-level security, password confirmation on every change, and two-factor authentication.</p>
+  </main>
+
+  <script src="/assets/js/config.js"></script>
+  <script src="/assets/vendor/supabase-2.116.0.js"></script>
+  <script src="/assets/js/data.js"></script>
+  <script src="/assets/js/cms.js"></script>
+  <script src="/assets/js/admin-login.js"></script>
+</body>
+</html>

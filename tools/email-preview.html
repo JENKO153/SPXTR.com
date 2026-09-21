@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Email preview — SPXTR</title>
+  <style>
+    :root { --bg: #0A0A0A; --panel: #151515; --line: #2A2A2A; --text: #D8D8D2; --muted: #8E8E88; --hot: #D4FF1F; }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.5 -apple-system, 'Helvetica Neue', Arial, sans-serif; }
+    header { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; padding: 14px 20px; border-bottom: 1px solid var(--line); position: sticky; top: 0; background: var(--bg); z-index: 2; }
+    header h1 { font: 800 16px/1 Impact, 'Arial Black', sans-serif; letter-spacing: .08em; text-transform: uppercase; margin: 0 12px 0 0; color: #fff; }
+    .seg { display: inline-flex; border: 1px solid var(--line); }
+    .seg button { background: none; border: 0; color: var(--muted); padding: 8px 12px; font: 600 12px/1 inherit; letter-spacing: .08em; text-transform: uppercase; cursor: pointer; }
+    .seg button.on { background: var(--hot); color: #0A0A0A; }
+    label { display: inline-flex; gap: 6px; align-items: center; color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .08em; }
+    input[type=color] { width: 32px; height: 28px; padding: 0; border: 1px solid var(--line); background: none; }
+    main { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 20px; padding: 20px; }
+    .stage { display: flex; justify-content: center; background: #050505; border: 1px solid var(--line); padding: 20px 0; min-height: 80vh; }
+    iframe { border: 0; background: #0A0A0A; width: 680px; height: 1600px; transition: width .2s; }
+    aside { display: grid; gap: 14px; align-content: start; }
+    .box { background: var(--panel); border: 1px solid var(--line); padding: 14px; }
+    .box h2 { margin: 0 0 8px; font: 600 11px/1 ui-monospace, Menlo, monospace; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+    .subject { color: #fff; font-weight: 600; }
+    pre { white-space: pre-wrap; margin: 0; font: 12px/1.55 ui-monospace, Menlo, monospace; color: var(--text); max-height: 50vh; overflow: auto; }
+    @media (max-width: 1100px) { main { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>SPXTR emails</h1>
+    <div class="seg" id="which">
+      <button class="on" data-t="confirmationEmail">Order confirmed</button>
+      <button data-t="shippingEmail">Shipped</button>
+      <button data-t="shopNotificationEmail">New order (to you)</button>
+    </div>
+    <div class="seg" id="width">
+      <button class="on" data-w="680">Desktop</button>
+      <button data-w="390">Phone</button>
+    </div>
+    <div class="seg" id="where">
+      <button class="on" data-c="aud">Australian order</button>
+      <button data-c="usd">Overseas (USD)</button>
+    </div>
+    <label>Accent <input type="color" id="accent" value="#d4ff1f"></label>
+  </header>
+  <main>
+    <div class="stage"><iframe id="frame" title="Email preview"></iframe></div>
+    <aside>
+      <div class="box"><h2>Subject line</h2><div class="subject" id="subject"></div></div>
+      <div class="box"><h2>Plain-text version</h2><pre id="text"></pre></div>
+      <div class="box"><h2>About this preview</h2>Rendered from <code>supabase/functions/_shared/email-templates.js</code>, the same file the live email functions use, with sample order data. Photos and the logo load from this computer here; in real emails they load from spxtr.com.</div>
+    </aside>
+  </main>
+
+  <script type="module">
+    import * as T from '../supabase/functions/_shared/email-templates.js';
+
+    const site = location.origin;
+    try { const a = localStorage.getItem('spx_accent'); if (/^#[0-9a-f]{6}$/i.test(a || '')) document.getElementById('accent').value = a.toLowerCase(); } catch {}
+
+    const sample = currency => {
+      const usd = currency === 'usd';
+      const items = [
+        { name: 'Ghost Eye Hoodie', size: 'L', quantity: 1, line_total: usd ? 6200 : 9500, sku: 'SPX-H-001', image: 'assets/img/hood-eye.jpg' },
+        { name: 'Full Send Back-Print Tee', size: 'M', quantity: 2, line_total: usd ? 5900 : 9000, sku: 'SPX-T-001', image: 'assets/img/tee-back.jpg' },
+        { name: 'Washed Pit Cap', size: 'One size', quantity: 1, line_total: usd ? 2100 : 3200, sku: 'SPX-C-002', image: 'assets/img/cap-washed.jpg' },
+      ];
+      const sub = items.reduce((a, i) => a + i.line_total, 0);
+      const ship = usd ? 2000 : 0;
+      return {
+        items,
+        order: {
+          number: 1004, name: usd ? 'Alex Moreau' : 'Jordan Reyes', email: usd ? 'alex@example.com' : 'jordan@example.com',
+          phone: usd ? '+1 555 010 3000' : '+61 400 000 111', currency,
+          shipping_address: usd ? { line1: '901 Canyon Blvd', city: 'Boulder', state: 'CO', postal_code: '80302', country: 'US' }
+                                : { line1: '12 Pit Lane', city: 'Newcastle', state: 'NSW', postal_code: '2300', country: 'AU' },
+          shipping_method: usd ? 'International shipping' : 'Free shipping',
+          amount_subtotal: sub, amount_shipping: ship, amount_tax: 0, amount_total: sub + ship, amount_total_aud: usd ? Math.round((sub + ship) * 1.52) : sub + ship,
+          carrier: 'Australia Post', tracking_number: 'LP123456789AU', tracking_url: 'https://auspost.com.au/mypost/track/details/LP123456789AU',
+          access_key: 'a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8',
+        },
+      };
+    };
+
+    const state = { t: 'confirmationEmail', c: 'aud' };
+    function render() {
+      const { order, items } = sample(state.c);
+      const m = T[state.t]({ site, accent: document.getElementById('accent').value.toUpperCase(), order, items, supportEmail: 'admin@spectercltv.com', instagram: '@spxtr' });
+      document.getElementById('frame').srcdoc = m.html;
+      document.getElementById('subject').textContent = m.subject;
+      document.getElementById('text').textContent = m.text;
+    }
+    const seg = (id, key, fn) => document.getElementById(id).addEventListener('click', e => {
+      const b = e.target.closest('button'); if (!b) return;
+      document.querySelectorAll(`#${id} button`).forEach(x => x.classList.toggle('on', x === b));
+      fn(b.dataset[key]);
+    });
+    seg('which', 't', v => { state.t = v; render(); });
+    seg('where', 'c', v => { state.c = v; render(); });
+    seg('width', 'w', v => { document.getElementById('frame').style.width = v + 'px'; });
+    document.getElementById('accent').addEventListener('input', render);
+    render();
+  </script>
+</body>
+</html>

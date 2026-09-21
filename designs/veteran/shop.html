@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Shop — Lanny Supply Co.</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Stencil+Display:wght@700;800;900&family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="assets/css/store.css">
+</head>
+<body>
+  <div id="chrome-top"></div>
+
+  <main class="wrap">
+    <div class="page-head">
+      <div class="crumbs"><a href="index.html">Home</a> // <span id="crumb">Shop all</span></div>
+      <h1 class="display" id="title">Shop all</h1>
+      <p class="muted" id="subtitle" style="max-width:520px;margin:0">Every piece of kit, in one place.</p>
+    </div>
+
+    <div class="shop">
+      <aside class="filters" id="filters">
+        <div class="filter-group"><h6>Category</h6><div id="f-cat"></div></div>
+        <div class="filter-group"><h6>Fit</h6><div id="f-gender"></div></div>
+        <div class="filter-group"><h6>Size</h6><div class="size-grid" id="f-size"></div></div>
+        <div class="filter-group"><h6>Price</h6><div id="f-price"></div></div>
+        <div class="filter-group"><button class="link-arrow" id="clear">Clear all filters</button></div>
+      </aside>
+
+      <section>
+        <div class="toolbar">
+          <div style="display:flex;gap:16px;align-items:center">
+            <button class="btn btn--ghost filter-toggle" style="height:38px;padding:0 16px" onclick="$('#filters').classList.toggle('open')">Filters</button>
+            <span id="count" class="muted"></span>
+          </div>
+          <label>Sort
+            <select id="sort">
+              <option value="featured">Featured</option>
+              <option value="new">Newest</option>
+              <option value="low">Price: low to high</option>
+              <option value="high">Price: high to low</option>
+              <option value="rating">Top rated</option>
+            </select>
+          </label>
+        </div>
+        <div class="products products--shop" id="grid"></div>
+      </section>
+    </div>
+  </main>
+
+  <div id="chrome-bottom"></div>
+
+  <script src="assets/js/data.js"></script>
+  <script src="assets/js/store.js"></script>
+  <script>
+    const params = new URLSearchParams(location.search);
+    const products = liveProducts();
+    const state = {
+      cats: new Set(params.get('category') ? [params.get('category')] : []),
+      genders: new Set(params.get('gender') ? [params.get('gender'), 'Unisex'] : []),
+      sizes: new Set(),
+      price: null,
+      filter: params.get('filter'),
+      q: (params.get('q') || '').toLowerCase(),
+    };
+    renderChrome(state.filter === 'new' ? 'new' : params.get('category') || 'shop');
+
+    // heading
+    const heads = {
+      new: ['New issue', `${STORE.currentIssue}. Small runs, so when it\'s gone, it\'s gone.`],
+      sale: ['Clearance', 'Last few pieces from past issues.'],
+    };
+    const g = params.get('gender'), c = params.get('category');
+    let [title, sub] = heads[state.filter] || [c || g || 'Shop all',
+      c ? `Cat // ${c}. Heavyweight, built to last, and ${STORE.giveBackPercent}% of every sale goes to veterans.` : g ? `${g}'s fit, plus every unisex piece.` : `Every piece of kit. ${STORE.giveBackPercent}% of every order goes to veteran charities.`];
+    if (state.q) { title = `“${params.get('q')}”`; sub = 'Search results'; }
+    $('#title').textContent = title; $('#crumb').textContent = title; $('#subtitle').textContent = sub;
+    document.title = `${title.replace(/[“”]/g, '')} — ${STORE.name}`;
+
+    // build filter controls
+    const count = (key, val) => products.filter(p => p[key] === val).length;
+    const cats = [...new Set(products.map(p => p.category))];
+    $('#f-cat').innerHTML = cats.map(c => `<label class="check"><input type="checkbox" value="${c}" ${state.cats.has(c) ? 'checked' : ''}>${c}<small>${count('category', c)}</small></label>`).join('');
+    $('#f-gender').innerHTML = ['Women', 'Men', 'Unisex'].map(g => `<label class="check"><input type="checkbox" value="${g}" ${state.genders.has(g) ? 'checked' : ''}>${g}<small>${count('gender', g)}</small></label>`).join('');
+    $('#f-size').innerHTML = ['XS', 'S', 'M', 'L', 'XL', '2XL', '30', '32', '34', '36', 'One size'].map(s => `<button data-size="${s}">${s}</button>`).join('');
+    const prices = [['Under $40', 0, 40], ['$40 – $100', 40, 100], ['$100 – $150', 100, 150], ['$150+', 150, 1e9]];
+    $('#f-price').innerHTML = prices.map((p, i) => `<label class="check"><input type="radio" name="price" value="${i}">${p[0]}</label>`).join('');
+
+    $('#f-cat').onchange = e => { e.target.checked ? state.cats.add(e.target.value) : state.cats.delete(e.target.value); render(); };
+    $('#f-gender').onchange = e => { e.target.checked ? state.genders.add(e.target.value) : state.genders.delete(e.target.value); render(); };
+    $('#f-price').onchange = e => { state.price = prices[e.target.value]; render(); };
+    $('#f-size').onclick = e => { const b = e.target.closest('button'); if (!b) return; b.classList.toggle('on'); state.sizes.has(b.dataset.size) ? state.sizes.delete(b.dataset.size) : state.sizes.add(b.dataset.size); render(); };
+    $('#sort').onchange = render;
+    $('#clear').onclick = () => { state.cats.clear(); state.genders.clear(); state.sizes.clear(); state.price = null; state.filter = null; state.q = ''; $$('#filters input').forEach(i => i.checked = false); $$('#f-size button').forEach(b => b.classList.remove('on')); render(); };
+
+    function render() {
+      let list = products.filter(p =>
+        (!state.cats.size || state.cats.has(p.category)) &&
+        (!state.genders.size || state.genders.has(p.gender)) &&
+        (!state.sizes.size || p.sizes.some(s => state.sizes.has(s))) &&
+        (!state.price || (p.price >= state.price[1] && p.price < state.price[2])) &&
+        (state.filter !== 'new' || p.isNew) &&
+        (state.filter !== 'sale' || p.compareAt) &&
+        (!state.q || (p.name + ' ' + p.category).toLowerCase().includes(state.q))
+      );
+      const s = $('#sort').value;
+      if (s === 'low') list.sort((a, b) => a.price - b.price);
+      if (s === 'high') list.sort((a, b) => b.price - a.price);
+      if (s === 'rating') list.sort((a, b) => b.rating - a.rating);
+      if (s === 'new') list.sort((a, b) => b.isNew - a.isNew);
+      $('#count').textContent = `${list.length} ${list.length === 1 ? 'product' : 'products'}`;
+      $('#grid').innerHTML = list.length ? list.map(productCard).join('') : `<div class="no-results"><h3 class="display" style="font-size:48px;margin:0 0 8px">No kit found</h3>Try removing a filter.</div>`;
+    }
+    render();
+  </script>
+</body>
+</html>

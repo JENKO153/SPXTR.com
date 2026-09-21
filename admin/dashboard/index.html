@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="referrer" content="no-referrer">
+  <title>Dashboard — SPXTR Admin</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Stencil+Display:wght@800;900&family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/assets/css/admin.css">
+  <script src="/assets/js/accent.js"></script>
+</head>
+<body class="dash" hidden>
+  <aside class="side" id="side">
+    <a class="side__brand" href="/admin/dashboard/">
+      <img src="/assets/brand/spxtr-ghost.jpg" alt="" class="side__ghost">
+      <img src="/assets/brand/spxtr-wordmark.jpg" alt="SPXTR" class="side__word">
+    </a>
+    <nav class="side__nav" id="nav">
+      <a href="#overview" data-route="overview"><svg viewBox="0 0 24 24"><path d="M4 13h6V4H4zM14 20h6v-9h-6zM4 20h6v-3H4zM14 7h6V4h-6z"/></svg>Overview</a>
+      <a href="#orders" data-route="orders"><svg viewBox="0 0 24 24"><path d="M5 8h14l-1 13H6L5 8ZM9 8V6a3 3 0 0 1 6 0v2"/></svg>Orders<span class="nav-count" id="toShip" hidden></span></a>
+      <a href="#products" data-route="products"><svg viewBox="0 0 24 24"><path d="M8 3 4 6l2 4 2-1v12h8V9l2 1 2-4-4-3c0 2-2 3-4 3S8 5 8 3Z"/></svg>Products</a>
+      <a href="#pages" data-route="pages"><svg viewBox="0 0 24 24"><path d="M4 4h16v6H4zM4 14h7v6H4zM15 14h5v6h-5z"/></svg>Pages</a>
+      <a href="#content" data-route="content"><svg viewBox="0 0 24 24"><path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8ZM4 21a8 8 0 0 1 16 0"/></svg>Team &amp; crew</a>
+      <a href="#settings" data-route="settings"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10"/></svg>Homepage &amp; settings</a>
+      <a href="#customise" data-route="customise"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 0 0 0 18c1.5 0 2-1 2-2s-1-1.5-1-2.5S14 15 15.5 15H18a3 3 0 0 0 3-3 9 9 0 0 0-9-9Z"/><circle cx="8" cy="10" r="1"/><circle cx="12" cy="7.5" r="1"/><circle cx="16" cy="10" r="1"/></svg>Customise</a>
+      <a href="#security" data-route="security"><svg viewBox="0 0 24 24"><path d="M12 3 4 6v6c0 5 3.5 8 8 9 4.5-1 8-4 8-9V6l-8-3Z"/></svg>Security &amp; activity</a>
+      <div class="side__label">Store</div>
+      <a href="https://dashboard.stripe.com/" id="stripeLink" target="_blank" rel="noopener noreferrer"><svg viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="12" rx="1"/><path d="M3 10h18M7 15h4"/></svg>Payments (Stripe)</a>
+      <a href="/" target="_blank" rel="noopener"><svg viewBox="0 0 24 24"><path d="M14 4h6v6M20 4l-9 9M18 14v6H4V6h6"/></svg>View store</a>
+    </nav>
+    <div class="side__foot">
+      <div class="side__user"><span id="userEmail"></span><small id="modeLabel"></small></div>
+      <button class="btn btn--ghost btn--sm" id="logout">Log out</button>
+    </div>
+  </aside>
+
+  <div class="main">
+    <header class="topbar">
+      <button class="icon-btn menu-toggle" id="menuToggle" aria-label="Menu"><svg viewBox="0 0 24 24"><path d="M3 7h18M3 12h18M3 17h18"/></svg></button>
+      <h1 id="viewTitle">Overview</h1>
+      <span class="spacer"></span>
+      <span class="chip chip--demo" id="demoChip" hidden>Demo mode</span>
+      <span class="chip" id="lockChip" title="Every change asks for your password"><svg viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="1"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>Changes need password</span>
+    </header>
+    <div class="content" id="view"></div>
+  </div>
+
+  <!-- Password confirmation (every change) -->
+  <div class="modal" id="confirmModal" hidden>
+    <form class="modal__card" id="confirmForm">
+      <div class="modal__icon"><svg viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="1"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg></div>
+      <h2>Confirm it's you</h2>
+      <p class="muted" id="confirmText">Enter your admin password to save this change.</p>
+      <input type="password" id="confirmPassword" autocomplete="current-password" maxlength="200" required aria-label="Admin password">
+      <div class="notice notice--error" id="confirmError" hidden></div>
+      <div class="modal__actions">
+        <button type="button" class="btn btn--ghost" id="confirmCancel">Cancel</button>
+        <button type="submit" class="btn" id="confirmSubmit">Confirm &amp; save</button>
+      </div>
+    </form>
+  </div>
+
+  <div class="toast" id="toast" role="status"></div>
+
+  <script src="/assets/js/config.js"></script>
+  <script src="/assets/vendor/supabase-2.116.0.js"></script>
+  <script src="/assets/js/data.js"></script>
+  <script src="/assets/js/cms.js"></script>
+  <script src="/assets/js/admin-dashboard.js"></script>
+</body>
+</html>
