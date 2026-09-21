@@ -143,8 +143,9 @@ input, select { font: inherit; color: inherit; }
 .hero__ctas { display: flex; gap: 14px; flex-wrap: wrap; }
 .hero__stripes { position: absolute; right: -6%; bottom: 0; width: 38%; height: 100%; z-index: -1; background: repeating-linear-gradient(115deg, transparent 0 34px, color-mix(in srgb, var(--hot) 8%, transparent) 34px 40px); clip-path: polygon(30% 0, 100% 0, 100% 100%, 0 100%); pointer-events: none; }
 .hero h1 .ghosted { -webkit-text-stroke: 2px var(--bone); color: transparent; }
-/* The stamp rides with the text block (in the space above the Season line), so it can't land on it. */
-.hero .stamp { position: absolute; right: var(--gutter); top: 6px; font-size: 20px; color: var(--hot); background: rgba(14,16,12,.72); border-width: 3px; transform: rotate(8deg); }
+/* The stamp rides with the text block: on the right, level with the headline's first line, so it never
+   lands on the Season / tagline row whatever the screen height. */
+.hero .stamp { position: absolute; right: var(--gutter); top: 150px; font-size: 20px; color: var(--hot); background: rgba(14,16,12,.72); border-width: 3px; transform: rotate(8deg); }
 .hero__bar { display: grid; grid-template-columns: repeat(var(--count, 4), 1fr); border-top: 1px solid var(--line-2); margin-top: clamp(40px, 7vh, 80px); }
 .hero__bar div { padding: 20px 20px 26px 0; font: 600 16px/1.25 var(--cond); letter-spacing: .06em; text-transform: uppercase; color: var(--bone); }
 .hero__bar div + div { padding-left: 20px; border-left: 1px solid var(--line-2); }
