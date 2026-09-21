@@ -23,7 +23,7 @@ const MONO = "'JetBrains Mono', 'SFMono-Regular', Menlo, Consolas, monospace";
 
 const orderNo = o => `SPX-${o.number}`;
 const firstName = o => String(o.name || '').trim().split(/\s+/)[0] || '';
-export const orderLink = (site, o) => (o.access_key ? `${site}/order.html?o=${o.number}&k=${encodeURIComponent(o.access_key)}` : '');
+export const orderLink = (site, o) => (o.access_key ? `${site}/order/?o=${o.number}&k=${encodeURIComponent(o.access_key)}` : '');
 const abs = (site, u) => (!u ? '' : /^https:\/\//.test(u) ? u : `${site}/${String(u).replace(/^\//, '')}`);
 let regionName = c => c;
 try { const dn = new Intl.DisplayNames(['en'], { type: 'region' }); regionName = c => { try { return dn.of(c) || c; } catch { return c; } }; } catch { /* older runtime */ }

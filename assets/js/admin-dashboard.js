@@ -502,7 +502,7 @@ if (window.top !== window.self) { document.documentElement.innerHTML = ''; throw
     form.addEventListener('input', () => { dirty = true; });
 
     $('#copyLink')?.addEventListener('click', async () => {
-      const link = new URL(`${ROOT}order.html?o=${encodeURIComponent(o.number)}&k=${encodeURIComponent(o.access_key)}`, location.href).href;
+      const link = new URL(`${ROOT}order/?o=${encodeURIComponent(o.number)}&k=${encodeURIComponent(o.access_key)}`, location.href).href;
       try { await navigator.clipboard.writeText(link); toast('Order link copied'); }
       catch { prompt('Copy this link:', link); }
     });
@@ -743,7 +743,7 @@ if (window.top !== window.self) { document.documentElement.innerHTML = ''; throw
             <h3>Product <small>${existing ? `Last saved ${esc(fmtDate(existing.updated_at || Date.now()))}` : 'Not saved yet'}</small></h3>
             <label>Title<input name="name" maxlength="120" required value="${esc(p.name)}" placeholder="e.g. Ghost Eye Hoodie"></label>
             <label>Web address
-              <div class="prefix"><span>/product.html?p=</span><input name="slug" maxlength="80" value="${esc(p.slug)}" placeholder="ghost-eye-hoodie"></div>
+              <div class="prefix"><span>/product/?p=</span><input name="slug" maxlength="80" value="${esc(p.slug)}" placeholder="ghost-eye-hoodie"></div>
               <span class="hint">Lowercase letters, numbers and dashes. Filled in from the title automatically.</span>
             </label>
             <div class="field-row">
@@ -803,7 +803,7 @@ if (window.top !== window.self) { document.documentElement.innerHTML = ''; throw
             <button type="submit" class="btn">Save product</button>
           </div>
         </form>
-        ${previewPanel(ROOT + 'product.html?preview=1', 'spxtr.com/product.html?p=' + (p.slug || 'new-product'))}
+        ${previewPanel(ROOT + 'product/?preview=1', 'spxtr.com/product/?p=' + (p.slug || 'new-product'))}
       </div>`;
 
     const form = $('#pform');
@@ -826,7 +826,7 @@ if (window.top !== window.self) { document.documentElement.innerHTML = ''; throw
       p.description = f.get('description');
       p.collections = f.getAll('collections');
       $('#descCount').textContent = `${p.description.length} / 5000`;
-      $('#previewUrl').textContent = 'spxtr.com/product.html?p=' + (p.slug || 'new-product');
+      $('#previewUrl').textContent = 'spxtr.com/product/?p=' + (p.slug || 'new-product');
     };
     form.slug.addEventListener('input', () => { slugTouched = true; });
     form.addEventListener('input', () => { read(); markDirty(); });
@@ -971,7 +971,7 @@ if (window.top !== window.self) { document.documentElement.innerHTML = ''; throw
           return `<div class="page-row" data-id="${esc(c.id)}">
             <div class="order-btns"><button data-move="-1" data-i="${i}" ${i === 0 ? 'disabled' : ''} aria-label="Move up">▲</button><button data-move="1" data-i="${i}" ${i === order.length - 1 ? 'disabled' : ''} aria-label="Move down">▼</button></div>
             <img src="${esc(asset(c.hero_image))}" alt="">
-            <div><b>${esc(c.name)}</b><small>/shop.html?page=${esc(c.slug)} // ${n} product${n === 1 ? '' : 's'}</small></div>
+            <div><b>${esc(c.name)}</b><small>/shop/?page=${esc(c.slug)} // ${n} product${n === 1 ? '' : 's'}</small></div>
             <div>${c.visible ? '<span class="pill pill--live">Visible</span>' : '<span class="pill pill--off">Hidden</span>'}</div>
             <div>${c.show_in_nav ? '<span class="pill pill--live">In menu</span>' : '<span class="pill pill--off">Not in menu</span>'}</div>
           </div>`;
@@ -1009,7 +1009,7 @@ if (window.top !== window.self) { document.documentElement.innerHTML = ''; throw
           <div class="section">
             <h3>Page</h3>
             <label>Page name<input name="name" maxlength="60" required value="${esc(c.name)}" placeholder="e.g. Rock Climbing"></label>
-            <label>Web address<div class="prefix"><span>/shop.html?page=</span><input name="slug" maxlength="60" value="${esc(c.slug)}" placeholder="rock-climbing"></div></label>
+            <label>Web address<div class="prefix"><span>/shop/?page=</span><input name="slug" maxlength="60" value="${esc(c.slug)}" placeholder="rock-climbing"></div></label>
             <label>Tagline <span class="hint">shown under the page title</span><input name="tagline" maxlength="160" value="${esc(c.tagline)}"></label>
             <label>Description <span class="hint">optional</span><textarea name="description" maxlength="2000" rows="4">${esc(c.description)}</textarea></label>
             <label class="toggle"><input type="checkbox" name="visible" ${c.visible ? 'checked' : ''}>Visible on the site</label>
@@ -1033,7 +1033,7 @@ if (window.top !== window.self) { document.documentElement.innerHTML = ''; throw
             <button type="submit" class="btn">Save page</button>
           </div>
         </form>
-        ${previewPanel(ROOT + 'shop.html?preview=1', 'spxtr.com/shop.html?page=' + (c.slug || 'new-page'))}
+        ${previewPanel(ROOT + 'shop/?preview=1', 'spxtr.com/shop/?page=' + (c.slug || 'new-page'))}
       </div>`;
 
     const form = $('#cform');
@@ -1047,7 +1047,7 @@ if (window.top !== window.self) { document.documentElement.innerHTML = ''; throw
       c.description = form.description.value;
       c.visible = form.visible.checked;
       c.show_in_nav = form.show_in_nav.checked;
-      $('#previewUrl').textContent = 'spxtr.com/shop.html?page=' + (c.slug || 'new-page');
+      $('#previewUrl').textContent = 'spxtr.com/shop/?page=' + (c.slug || 'new-page');
     };
     form.slug.addEventListener('input', () => { slugTouched = true; });
     form.addEventListener('input', () => { read(); markDirty(); });
@@ -1245,7 +1245,7 @@ if (window.top !== window.self) { document.documentElement.innerHTML = ''; throw
             <button type="submit" class="btn">Save team &amp; crew</button>
           </div>
         </form>
-        ${previewPanel(ROOT + 'index.html?preview=1', 'spxtr.com')}
+        ${previewPanel(ROOT + '?preview=1', 'spxtr.com')}
       </div>`;
 
     const form = $('#cform');
@@ -1464,7 +1464,7 @@ if (window.top !== window.self) { document.documentElement.innerHTML = ''; throw
           </div>
           <input type="file" id="picker" accept="image/jpeg,image/png,image/webp,image/avif,image/heic,image/heif,.heic,.heif" hidden>
         </form>
-        ${previewPanel(ROOT + 'index.html?preview=1', 'spxtr.com')}
+        ${previewPanel(ROOT + '?preview=1', 'spxtr.com')}
       </div>`;
 
     const form = $('#sform');
@@ -1587,7 +1587,7 @@ if (window.top !== window.self) { document.documentElement.innerHTML = ''; throw
             <button type="submit" class="btn">Save colour</button>
           </div>
         </form>
-        ${previewPanel(ROOT + 'index.html?preview=1', 'spxtr.com')}
+        ${previewPanel(ROOT + '?preview=1', 'spxtr.com')}
       </div>`;
 
     const send = wirePreview(() => ({ settings: { ...DATA.settings, theme: { accent: validAccent(accent) ? accent : saved } } }));

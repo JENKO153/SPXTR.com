@@ -13,7 +13,7 @@
     return;
   }
   if (!product) {
-    $('#pdp').innerHTML = `<div style="padding:80px 0"><h1 class="display" style="font-size:64px">Not found</h1><p class="muted">That product has moved or sold out for good.</p><a class="btn" href="shop.html">Shop all</a></div>`;
+    $('#pdp').innerHTML = `<div style="padding:80px 0"><h1 class="display" style="font-size:64px">Not found</h1><p class="muted">That product has moved or sold out for good.</p><a class="btn" href="shop/">Shop all</a></div>`;
     $('#related-section').hidden = true;
     return;
   }
@@ -38,7 +38,7 @@ function render(p) {
   const first = pages[0];
   document.title = `${p.name || 'Product'} — ${STORE.name}`;
 
-  $('#crumbs').innerHTML = `<a href="index.html">Home</a> // ${first ? `<a href="shop.html?page=${encodeURIComponent(first.slug)}">${esc(first.name)}</a> // ` : ''}${esc(p.name)}`;
+  $('#crumbs').innerHTML = `<a href="./">Home</a> // ${first ? `<a href="shop/?page=${encodeURIComponent(first.slug)}">${esc(first.name)}</a> // ` : ''}${esc(p.name)}`;
   $('#pdp').innerHTML = `
     <div class="pdp__gallery">
       <div class="main" id="zoom"><img id="main-img" src="${esc(main)}" alt="${esc(p.name)}"><span class="corners"></span></div>

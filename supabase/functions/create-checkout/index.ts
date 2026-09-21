@@ -134,8 +134,8 @@ Deno.serve(async req => {
       // Checkout links go stale after an hour, so a cart can't sit on sold-out stock for a day.
       expires_at: Math.floor(Date.now() / 1000) + 60 * 60,
       // Back to whichever allowed address they came from (the live site, or localhost while testing).
-      success_url: `${back}/order-complete.html?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${back}/shop.html?checkout=cancelled`,
+      success_url: `${back}/order-complete/?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${back}/shop/?checkout=cancelled`,
       metadata: { source: 'spxtr-site', region },
     });
 

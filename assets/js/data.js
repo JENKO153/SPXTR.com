@@ -13,7 +13,9 @@ const STORE = Object.freeze({
   currency: '$',
   email: 'admin@spectercltv.com',
   // Client's brand artwork (white on black; the site blends/masks the black away).
-  brand: { wordmark: 'assets/brand/spxtr-wordmark.jpg', ghost: 'assets/brand/spxtr-ghost.jpg' },
+  brand: { wordmark: 'assets/brand/spxtr-wordmark.jpg', ghost: 'assets/brand/spxtr-ghost.jpg',
+           // transparent version of the wordmark, used as the stencil for the giant footer logo
+           wordmarkMask: 'assets/brand/spxtr-wordmark-mask.png' },
   categories: ['Hoodies', 'Tees', 'Outerwear', 'Bottoms', 'Headwear', 'Gear'],
   badges: ['New', 'Bestseller', 'Limited', 'Low stock', 'Sale'],
 });

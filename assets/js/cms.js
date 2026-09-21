@@ -169,8 +169,8 @@
           res = await fetch(`${cfg.supabaseUrl}/functions/v1/create-checkout`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', apikey: cfg.supabaseKey },
-            // return_to: this page's address, so Stripe sends shoppers back to the right folder
-            body: JSON.stringify({ items: items.map(({ id, size, qty }) => ({ id, size, qty })), region, return_to: location.href }),
+            // return_to: the site's root address, so Stripe sends shoppers back to the right place (even in a sub-folder)
+            body: JSON.stringify({ items: items.map(({ id, size, qty }) => ({ id, size, qty })), region, return_to: new URL('.', document.baseURI).href }),
           });
           body = await res.json();
         } catch {

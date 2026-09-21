@@ -330,7 +330,9 @@ input, select { font: inherit; color: inherit; }
 /* Giant footer wordmark: the client's artwork used as a luminance mask, so its white letters take this colour */
 .footer__giant { width: min(100% - 2 * var(--gutter), 1500px); aspect-ratio: 900 / 480; margin: 40px auto -2px; background: var(--surface-2);
   -webkit-mask-position: center; mask-position: center; -webkit-mask-size: contain; mask-size: contain;
-  -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; mask-mode: luminance; } /* mask-image is set inline so its path resolves from the page */
+  -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; }
+  /* mask-image is set inline so its path resolves from the page. It's a transparent PNG: Safari (iPhone/iPad)
+     only reads a mask's transparency, so a black-and-white JPG showed as a solid grey box there. */
 .footer h5 { color: var(--hot); margin: 0 0 18px; font: 500 12px var(--mono); letter-spacing: .12em; text-transform: uppercase; }
 .footer ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; font: 600 16px var(--cond); letter-spacing: .08em; text-transform: uppercase; }
 .footer a:hover { color: var(--bone); }

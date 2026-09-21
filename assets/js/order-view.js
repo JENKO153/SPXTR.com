@@ -5,7 +5,7 @@ function orderMoney(minor, currency = 'aud') {
   const c = String(currency).toLowerCase();
   return new Intl.NumberFormat('en-AU', { style: 'currency', currency: c.toUpperCase() }).format((minor || 0) / (ZERO_DECIMAL.has(c) ? 1 : 100));
 }
-const orderLinkFor = o => `order.html?o=${encodeURIComponent(o.number)}&k=${encodeURIComponent(o.key || o.access_key)}`;
+const orderLinkFor = o => `order/?o=${encodeURIComponent(o.number)}&k=${encodeURIComponent(o.key || o.access_key)}`;
 
 function orderStage(o) {
   if (o.status === 'refunded') return { step: -1, label: 'Refunded', text: 'This order was refunded. The money goes back to your card within 5–10 business days.' };

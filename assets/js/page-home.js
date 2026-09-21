@@ -35,7 +35,7 @@ const linkTo = (sel, text, url) => {
   el.hidden = !text;
 };
 // Only real addresses: this site's pages, or an https link the admin pasted.
-const safeLink = u => (/^(https:\/\/|mailto:|\/|[a-z0-9-]+\.html|#)/i.test(u || '') ? u : '');
+const safeLink = u => (/^(https:\/\/|mailto:|\/|#|\.\/|[a-z0-9-]+(\.html|\/))/i.test(u || '') ? u : '');
 
 function renderHome() {
   const h = SITE.hero;
@@ -58,7 +58,7 @@ function renderHome() {
   const tiles = COLLECTIONS.slice(0, 6);
   $('#disc').style.setProperty('--tiles', Math.max(tiles.length, 1));
   $('#disc').innerHTML = tiles.map((c, i) => `
-    <a href="shop.html?page=${encodeURIComponent(c.slug)}"><img src="${imgSrc(c.hero_image)}" alt="${esc(c.name)}" loading="lazy">
+    <a href="shop/?page=${encodeURIComponent(c.slug)}"><img src="${imgSrc(c.hero_image)}" alt="${esc(c.name)}" loading="lazy">
       <div class="disc__label"><span class="code">Page 0${i + 1}</span><h3>${esc(c.name)}</h3></div></a>`).join('');
 
   $('#season-eyebrow').textContent = `Sec. 02 // ${SITE.season}`;

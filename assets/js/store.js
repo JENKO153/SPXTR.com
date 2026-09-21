@@ -21,7 +21,7 @@ const money = n => STORE.currency + Number(n).toLocaleString('en-US', { minimumF
 const safeUrl = u => (/^(https:\/\/|assets\/img\/|data:image\/(webp|jpeg|png);base64,|blob:)/.test(u || '') ? u : '');
 const imgSrc = u => esc(safeUrl(u) || IMG + 'hero-roost.jpg');
 const collectionById = id => COLLECTIONS.find(c => c.id === id);
-const productUrl = p => `product.html?p=${encodeURIComponent(p.slug)}`;
+const productUrl = p => `product/?p=${encodeURIComponent(p.slug)}`;
 
 async function loadStore() {
   try {
@@ -48,7 +48,7 @@ const GHOST_SVG = `<svg class="logo__ghost" viewBox="0 0 100 120" aria-hidden="t
   <path fill="var(--bone)" d="M50 4C30 4 22 20 22 36v16C14 60 8 66 4 78c8-4 12-6 16-6-6 10-8 20-6 32 6-10 10-16 14-18 0 10 2 20 10 30 0-10 2-18 6-22 2 8 6 16 12 22 0-10 2-18 4-24 4 6 10 12 16 14-4-10-4-18-2-24 6 2 12 8 18 14-2-12-6-22-12-30l-2-30C78 20 70 4 50 4Z"/>
   <path fill="var(--ink)" d="M33 31l13 7c0 6-4 9-8 7s-5-7-5-14Zm34 0-13 7c0 6 4 9 8 7s5-7 5-14Z"/>
 </svg>`;
-const logoHtml = () => `<a href="index.html" class="logo" aria-label="${STORE.name} home">
+const logoHtml = () => `<a href="./" class="logo" aria-label="${STORE.name} home">
   <img class="logo__ghost" src="${STORE.brand.ghost}" alt="" data-fallback="ghost">
   <img class="logo__word" src="${STORE.brand.wordmark}" alt="${STORE.name}" data-fallback="word">
 </a>`;
@@ -62,10 +62,10 @@ function wireBrandFallbacks(root = document) {
 /* ---------------- chrome ---------------- */
 function navItems() {
   return [
-    ['shop.html', 'Shop all', 'shop'],
-    ['shop.html?filter=new', 'New', 'new'],
-    ...COLLECTIONS.filter(c => c.show_in_nav).map(c => [`shop.html?page=${encodeURIComponent(c.slug)}`, c.name, c.slug]),
-    ['index.html#team', 'Team', 'team'],
+    ['shop/', 'Shop all', 'shop'],
+    ['shop/?filter=new', 'New', 'new'],
+    ...COLLECTIONS.filter(c => c.show_in_nav).map(c => [`shop/?page=${encodeURIComponent(c.slug)}`, c.name, c.slug]),
+    ['./#team', 'Team', 'team'],
   ];
 }
 
@@ -89,7 +89,7 @@ function renderChrome(active = '') {
           <button class="icon-btn" aria-label="Open cart" data-open-cart>${ICON.bag}<span class="bag-count"></span></button>
         </div>
       </div>
-      <div class="search-bar"><form class="wrap" action="shop.html">${ICON.search.replace('<svg', '<svg width="22" height="22"')}<input name="q" maxlength="80" placeholder="Search tees, hoodies, caps…" aria-label="Search products"><button type="button" class="icon-btn" data-search aria-label="Close search">${ICON.close}</button></form></div>
+      <div class="search-bar"><form class="wrap" action="shop/">${ICON.search.replace('<svg', '<svg width="22" height="22"')}<input name="q" maxlength="80" placeholder="Search tees, hoodies, caps…" aria-label="Search products"><button type="button" class="icon-btn" data-search aria-label="Close search">${ICON.close}</button></form></div>
     </header>
     <div class="mobile-nav" aria-hidden="true">
       <div class="mobile-nav__top">${logoHtml()}<button class="icon-btn" data-close-menu aria-label="Close menu">${ICON.close}</button></div>
@@ -105,9 +105,9 @@ function renderChrome(active = '') {
             <p class="footer__motto">${esc(SITE.footer.tagline)}</p>
             <p style="max-width:380px;margin:0">${esc(SITE.footer.blurb)}</p>
           </div>
-          <div><h5>// Shop</h5><ul><li><a href="shop.html?filter=new">New</a></li>${COLLECTIONS.map(c => `<li><a href="shop.html?page=${encodeURIComponent(c.slug)}">${esc(c.name)}</a></li>`).join('')}</ul></div>
+          <div><h5>// Shop</h5><ul><li><a href="shop/?filter=new">New</a></li>${COLLECTIONS.map(c => `<li><a href="shop/?page=${encodeURIComponent(c.slug)}">${esc(c.name)}</a></li>`).join('')}</ul></div>
           <div><h5>// Support</h5><ul><li><a href="#">Shipping</a></li><li><a href="#">Returns</a></li><li><a href="#">Size guide</a></li><li><a href="#">Warranty</a></li><li><a href="mailto:${esc(SITE.footer.email || STORE.email)}">Contact</a></li></ul></div>
-          <div><h5>// The crew</h5><ul><li><a href="index.html#team">Team riders</a></li><li><a href="index.html#event">Events</a></li><li><a href="${esc(SITE.instagramUrl || '#')}">Instagram</a></li><li><a href="#">YouTube</a></li></ul></div>
+          <div><h5>// The crew</h5><ul><li><a href="./#team">Team riders</a></li><li><a href="./#event">Events</a></li><li><a href="${esc(SITE.instagramUrl || '#')}">Instagram</a></li><li><a href="#">YouTube</a></li></ul></div>
         </div>
         <div class="footer__bottom">
           <span>© ${new Date().getFullYear()} ${STORE.name} · ${esc(SITE.footer.tagline)}</span>
@@ -136,7 +136,7 @@ function renderChrome(active = '') {
   setTimeout(() => document.documentElement.classList.remove('is-loading'), 0);
 
   const giant = $('.footer__giant');
-  giant.style.webkitMaskImage = giant.style.maskImage = `url("${STORE.brand.wordmark}")`;
+  giant.style.webkitMaskImage = giant.style.maskImage = `url("${STORE.brand.wordmarkMask}")`;
   wireBrandFallbacks();
 
   if (!renderChrome.wired) {
@@ -154,6 +154,8 @@ function renderChrome(active = '') {
 // One delegated handler for everything clickable in the chrome and product cards.
 function onDocumentClick(e) {
   if (PREVIEW && e.target.closest('a[href]')) { e.preventDefault(); return; } // admin preview: stay on the page
+  // Placeholder links (href="#") stay put. Pages in sub-folders use <base>, which would otherwise send "#" home.
+  if (e.target.closest('a[href="#"]')) { e.preventDefault(); return; }
   const t = e.target.closest('[data-open-cart],[data-close-cart],[data-open-menu],[data-close-menu],[data-search],[data-add],[data-wish],[data-qty],[data-remove],[data-checkout],[data-region]');
   if (!t) return;
   if (t.matches('[data-open-cart]')) openCart();
@@ -265,7 +267,7 @@ function renderCart() {
         <button class="remove" data-remove data-line="${i}">Remove</button>
       </div>
     </div>`).join('')
-    : `<div class="empty"><h4>Cart's empty</h4><p>Go find something worth crashing in.</p><a class="btn" href="shop.html" style="margin-top:12px">Shop all</a></div>`;
+    : `<div class="empty"><h4>Cart's empty</h4><p>Go find something worth crashing in.</p><a class="btn" href="shop/" style="margin-top:12px">Shop all</a></div>`;
 
   $('.drawer__foot').innerHTML = lines.length ? `
     <div class="mil">✕ Free returns within 30 days. Crashed it? Our warranty covers seams for life</div>

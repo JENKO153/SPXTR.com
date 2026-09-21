@@ -1,0 +1,8 @@
+User-agent: *
+Disallow: /admin/
+Disallow: /tools/
+Disallow: /order/
+Disallow: /order-complete/
+Disallow: /order.html
+Disallow: /order-complete.html
+Allow: /
