@@ -9,7 +9,7 @@
 
 import Stripe from 'npm:stripe@17';
 import { createClient } from 'npm:@supabase/supabase-js@2';
-import { cors, env, json, originAllowed, serviceKey, siteUrl } from '../_shared/http.ts';
+import { cors, env, json, originAllowed, returnBase, serviceKey, siteUrl } from '../_shared/http.ts';
 
 const stripe = new Stripe(env('STRIPE_SECRET_KEY'), { httpClient: Stripe.createFetchHttpClient() });
 const db = createClient(env('SUPABASE_URL'), serviceKey(), { auth: { persistSession: false } });
@@ -57,7 +57,8 @@ Deno.serve(async req => {
   try {
     const raw = await req.text();
     if (raw.length > 10_000) throw new BadRequest('Your cart is too large.');
-    const { lines, region } = readCart(JSON.parse(raw || '{}'));
+    const parsed = JSON.parse(raw || '{}');
+    const { lines, region } = readCart(parsed);
 
     // Current, published products only. Drafts and deleted products can't be bought.
     const ids = [...new Set(lines.map(l => l.id))];
@@ -83,7 +84,7 @@ Deno.serve(async req => {
     }
 
     const site = siteUrl();
-    const back = req.headers.get('Origin') ?? site; // already checked against the allowed list above
+    const back = returnBase(req, parsed.return_to); // the shop's own folder, on an allowed origin
     const absolute = (u: string) => (u.startsWith('https://') ? u : `${site}/${u.replace(/^\//, '')}`);
     const taxBehavior = STRIPE_TAX ? { tax_behavior: 'inclusive' as const } : {};
 

@@ -1,7 +1,9 @@
 /* SPXTR admin login: password -> authenticator code (or first-time setup) -> dashboard. */
+// The admin must never run inside another site's frame (a trick to capture clicks or passwords).
+if (window.top !== window.self) { document.documentElement.innerHTML = ''; throw new Error('SPXTR admin cannot be framed'); }
 (function () {
   const $ = s => document.querySelector(s);
-  const DASHBOARD = '/admin/dashboard/';
+  const DASHBOARD = '../dashboard/';  // relative, so it works wherever the site is hosted
   const steps = { login: $('#loginForm'), mfa: $('#mfaForm'), enroll: $('#enrollForm') };
   let enrolling = null;
   let failures = 0;

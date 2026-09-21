@@ -4,19 +4,21 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="robots" content="noindex, nofollow">
+  <!-- Security policy in the page itself, for hosts that ignore _headers (e.g. GitHub Pages) -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https://*.supabase.co; connect-src 'self' https://*.supabase.co; frame-src 'self' https://challenges.cloudflare.com; base-uri 'none'; form-action 'self'; object-src 'none'">
   <meta name="referrer" content="no-referrer">
   <title>Admin login — SPXTR</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Stencil+Display:wght@800;900&family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/assets/css/admin.css">
-  <script src="/assets/js/accent.js"></script>
+  <link rel="stylesheet" href="../../assets/css/admin.css">
+  <script src="../../assets/js/accent.js"></script>
 </head>
 <body class="auth-page">
   <main class="auth">
     <div class="auth__brand">
-      <img src="/assets/brand/spxtr-ghost.jpg" alt="" class="auth__ghost">
-      <img src="/assets/brand/spxtr-wordmark.jpg" alt="SPXTR" class="auth__word">
+      <img src="../../assets/brand/spxtr-ghost.jpg" alt="" class="auth__ghost">
+      <img src="../../assets/brand/spxtr-wordmark.jpg" alt="SPXTR" class="auth__word">
       <span class="auth__tag">Admin</span>
     </div>
 
@@ -54,15 +56,15 @@
         <button type="button" class="link" data-cancel>Cancel</button>
       </form>
 
-      <p class="auth__back"><a href="/">&larr; Back to the store</a></p>
+      <p class="auth__back"><a href="../../">&larr; Back to the store</a></p>
     </div>
     <p class="auth__fine">Protected by row-level security, password confirmation on every change, and two-factor authentication.</p>
   </main>
 
-  <script src="/assets/js/config.js"></script>
-  <script src="/assets/vendor/supabase-2.116.0.js"></script>
-  <script src="/assets/js/data.js"></script>
-  <script src="/assets/js/cms.js"></script>
-  <script src="/assets/js/admin-login.js"></script>
+  <script src="../../assets/js/config.js"></script>
+  <script src="../../assets/vendor/supabase-2.116.0.js"></script>
+  <script src="../../assets/js/data.js"></script>
+  <script src="../../assets/js/cms.js"></script>
+  <script src="../../assets/js/admin-login.js"></script>
 </body>
 </html>

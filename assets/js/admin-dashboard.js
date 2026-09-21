@@ -2,6 +2,8 @@
  * Every change goes through withWrite(): it asks for the admin password, the database opens a
  * short write window for this session, the change is made, and the window is closed again.
  * The database refuses writes without that window, so this UI is not the security boundary. */
+// The admin must never run inside another site's frame (a trick to capture clicks or passwords).
+if (window.top !== window.self) { document.documentElement.innerHTML = ''; throw new Error('SPXTR admin cannot be framed'); }
 (function () {
   const $ = (s, el = document) => el.querySelector(s);
   const $$ = (s, el = document) => [...el.querySelectorAll(s)];
@@ -17,8 +19,11 @@
   const SIZES = ['XS', 'S', 'M', 'L', 'XL', '2XL', '28', '30', '32', '34', '36', 'One size'];
   const SLUG_RE = /^[a-z0-9]+(-[a-z0-9]+)*$/;
   const safe = u => (/^(https:\/\/|assets\/img\/|data:image\/(webp|jpeg|png);base64,|blob:)/.test(u || '') ? u : '');
-  // Stored paths like "assets/img/x.jpg" are relative to the site root; the admin lives two folders down.
-  const asset = u => { const s = safe(u); return s.startsWith('assets/') ? '/' + s : s; };
+  // The site's root, relative to this page (admin/dashboard/). Relative paths keep the admin working
+  // wherever the site is hosted: spxtr.com, a GitHub Pages sub-folder, or localhost.
+  const ROOT = '../../';
+  // Stored paths like "assets/img/x.jpg" are relative to the site root.
+  const asset = u => { const s = safe(u); return s.startsWith('assets/') ? ROOT + s : s; };
   const money = n => STORE.currency + Number(n || 0).toLocaleString('en-US', { minimumFractionDigits: n % 1 ? 2 : 0, maximumFractionDigits: 2 });
   const fmtDate = d => new Date(d).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
   const clone = v => JSON.parse(JSON.stringify(v));
@@ -36,7 +41,7 @@
   (async () => {
     let admin = null;
     try { admin = await CMS.getAdmin(); } catch (e) { console.error(e); }
-    if (!admin || admin.needs) { location.replace('/admin/login/'); return; }
+    if (!admin || admin.needs) { location.replace('../login/'); return; }
     document.body.hidden = false;
     $('#userEmail').textContent = admin.email;
     $('#modeLabel').textContent = CMS.mode === 'demo' ? 'Demo admin' : admin.mfa ? 'Owner // 2FA on' : 'Owner';
@@ -79,7 +84,7 @@
   $('#logout').addEventListener('click', async () => {
     if (dirty && !confirm('You have unsaved changes. Log out anyway?')) return;
     await CMS.logout();
-    location.replace('/admin/login/');
+    location.replace('../login/');
   });
   $('#menuToggle').addEventListener('click', () => $('#side').classList.toggle('open'));
   ['dragover', 'drop'].forEach(ev => window.addEventListener(ev, e => {
@@ -92,7 +97,7 @@
     let timer;
     const reset = () => {
       clearTimeout(timer);
-      timer = setTimeout(async () => { await CMS.logout(); location.replace('/admin/login/?reason=idle'); }, cfg.adminIdleMinutes * 60e3);
+      timer = setTimeout(async () => { await CMS.logout(); location.replace('../login/?reason=idle'); }, cfg.adminIdleMinutes * 60e3);
     };
     ['mousemove', 'keydown', 'click', 'scroll', 'touchstart'].forEach(ev => window.addEventListener(ev, reset, { passive: true }));
     reset();
@@ -497,7 +502,7 @@
     form.addEventListener('input', () => { dirty = true; });
 
     $('#copyLink')?.addEventListener('click', async () => {
-      const link = `${location.origin}/order.html?o=${encodeURIComponent(o.number)}&k=${encodeURIComponent(o.access_key)}`;
+      const link = new URL(`${ROOT}order.html?o=${encodeURIComponent(o.number)}&k=${encodeURIComponent(o.access_key)}`, location.href).href;
       try { await navigator.clipboard.writeText(link); toast('Order link copied'); }
       catch { prompt('Copy this link:', link); }
     });
@@ -798,7 +803,7 @@
             <button type="submit" class="btn">Save product</button>
           </div>
         </form>
-        ${previewPanel('/product.html?preview=1', 'spxtr.com/product.html?p=' + (p.slug || 'new-product'))}
+        ${previewPanel(ROOT + 'product.html?preview=1', 'spxtr.com/product.html?p=' + (p.slug || 'new-product'))}
       </div>`;
 
     const form = $('#pform');
@@ -1028,7 +1033,7 @@
             <button type="submit" class="btn">Save page</button>
           </div>
         </form>
-        ${previewPanel('/shop.html?preview=1', 'spxtr.com/shop.html?page=' + (c.slug || 'new-page'))}
+        ${previewPanel(ROOT + 'shop.html?preview=1', 'spxtr.com/shop.html?page=' + (c.slug || 'new-page'))}
       </div>`;
 
     const form = $('#cform');
@@ -1240,7 +1245,7 @@
             <button type="submit" class="btn">Save team &amp; crew</button>
           </div>
         </form>
-        ${previewPanel('/index.html?preview=1', 'spxtr.com')}
+        ${previewPanel(ROOT + 'index.html?preview=1', 'spxtr.com')}
       </div>`;
 
     const form = $('#cform');
@@ -1459,7 +1464,7 @@
           </div>
           <input type="file" id="picker" accept="image/jpeg,image/png,image/webp,image/avif,image/heic,image/heif,.heic,.heif" hidden>
         </form>
-        ${previewPanel('/index.html?preview=1', 'spxtr.com')}
+        ${previewPanel(ROOT + 'index.html?preview=1', 'spxtr.com')}
       </div>`;
 
     const form = $('#sform');
@@ -1582,7 +1587,7 @@
             <button type="submit" class="btn">Save colour</button>
           </div>
         </form>
-        ${previewPanel('/index.html?preview=1', 'spxtr.com')}
+        ${previewPanel(ROOT + 'index.html?preview=1', 'spxtr.com')}
       </div>`;
 
     const send = wirePreview(() => ({ settings: { ...DATA.settings, theme: { accent: validAccent(accent) ? accent : saved } } }));
@@ -1668,7 +1673,7 @@
     $('#signOutAll').addEventListener('click', async () => {
       if (!confirm('Sign out of the admin on every device, including this one?')) return;
       await CMS.logout(true);
-      location.replace('/admin/login/');
+      location.replace('../login/');
     });
     $('#resetDemo')?.addEventListener('click', async () => {
       if (!confirm('Reset all demo data in this browser?')) return;
