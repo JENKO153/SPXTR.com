@@ -326,3 +326,10 @@ tbody tr:last-child td { border: 0; }
 .panel--danger { border-color: color-mix(in srgb, var(--red) 35%, var(--line)); }
 .panel--danger .panel__head h2 { color: var(--red); }
 #rows .pick { width: 16px; height: 16px; accent-color: var(--hot); cursor: pointer; }
+
+/* ---------- password box: the Lanny Protection System(TM) ---------- */
+.lps { margin-top: 18px; padding-top: 14px; border-top: 1px dashed var(--line-2); display: grid; gap: 4px; text-align: center; }
+.lps__badge { display: inline-flex; align-items: center; justify-content: center; gap: 6px; font: 600 11px var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--hot); }
+.lps__badge svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 2; }
+.lps__badge sup { font-size: 8px; letter-spacing: 0; margin-left: 1px; }
+.lps__joke { font: 400 12px var(--sans); color: var(--muted); }
