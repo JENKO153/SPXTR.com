@@ -55,3 +55,5 @@ export const orderLink = (site: string, o: Order) => T.orderLink(site, o);
 export const confirmationEmail = (site: string, o: Order, items: Item[]) => T.confirmationEmail(ctx(site, o, items));
 export const shippingEmail = (site: string, o: Order, items: Item[]) => T.shippingEmail(ctx(site, o, items));
 export const shopNotificationEmail = (site: string, o: Order, items: Item[]) => T.shopNotificationEmail(ctx(site, o, items));
+export const reviewAlertEmail = (site: string, review: Record<string, unknown>, productName: string) =>
+  T.reviewAlertEmail({ site, review, productName, accent: brand.accent, instagram: brand.instagram });

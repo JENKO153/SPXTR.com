@@ -17,3 +17,7 @@ verify_jwt = false
 # Called from the admin's Orders screen; checks the admin's session and password window itself.
 [functions.refund-order]
 verify_jwt = false
+
+# The public review form; spam-checked inside the function.
+[functions.submit-review]
+verify_jwt = false

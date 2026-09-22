@@ -54,7 +54,10 @@
     canvas.width = Math.round(bitmap.width * scale);
     canvas.height = Math.round(bitmap.height * scale);
     canvas.getContext('2d').drawImage(bitmap, 0, 0, canvas.width, canvas.height);
-    const blob = await new Promise(r => canvas.toBlob(r, 'image/webp', quality));
+    const encode = type => new Promise(r => canvas.toBlob(r, type, quality));
+    // WebP where the browser can make it; some Safari versions can't (they hand back a PNG), so use JPEG there.
+    let blob = await encode('image/webp');
+    if (!blob || blob.type !== 'image/webp') blob = await encode('image/jpeg');
     if (!blob) throw new Error('Could not process that photo');
     return blob;
   }
@@ -118,19 +121,21 @@
           if (error) throw error;
           return data;
         });
-        return { collections: d.collections, products: d.products.map(toProduct), settings: mergeSettings(d.settings) };
+        return { collections: d.collections, products: d.products.map(toProduct), settings: mergeSettings(d.settings), reviews: d.reviews || [] };
       } catch (err) {
         if (err?.code !== 'PGRST202') console.warn('store_data failed, loading the slow way', err);
       }
       // Each request retries on its own, so one stalled request doesn't hold up the others.
       const read = q => hedged(() => q().then(r => r));
-      const [c, p, s] = await Promise.all([
+      const [c, p, s, r] = await Promise.all([
         read(() => client.from('collections').select('*').order('sort_order')),
         read(() => client.from('products').select('*, product_collections(collection_id)').order('sort_order')),
         read(() => client.from('site_settings').select('data').eq('id', 1).maybeSingle()),
+        read(() => client.from('reviews').select('id, created_at, status, featured, product_id, verified, rating, name, body, photos').order('created_at', { ascending: false }).limit(300)),
       ]);
       fail(c.error, 'Could not load pages'); fail(p.error, 'Could not load products'); fail(s.error, 'Could not load settings');
-      return { collections: c.data, products: p.data.map(toProduct), settings: mergeSettings(s.data?.data) };
+      // reviews are optional: a missing reviews table (schema not re-run yet) shouldn't break the store
+      return { collections: c.data, products: p.data.map(toProduct), settings: mergeSettings(s.data?.data), reviews: r.error ? [] : r.data };
     }
 
     const bucketPath = url => {
@@ -163,6 +168,23 @@
 
       // Sends only ids, sizes and quantities. The function looks up real prices and stock,
       // then returns the address of Stripe's hosted checkout page.
+      // Customer review from the product page or order page. Goes to the submit-review Edge Function,
+      // which saves it as pending until an admin approves it.
+      async submitReview(review) {
+        let res, body;
+        try {
+          res = await fetch(`${cfg.supabaseUrl}/functions/v1/submit-review`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', apikey: cfg.supabaseKey },
+            body: JSON.stringify(review),
+          });
+          body = await res.json();
+        } catch {
+          throw new Error('Could not send your review. Check your connection and try again.');
+        }
+        if (!res.ok) throw new Error(body?.error || 'Your review couldn\'t be sent.');
+        return true;
+      },
       async startCheckout(items, region) {
         let res, body;
         try {
@@ -238,11 +260,12 @@
       endWrite: () => admin().rpc('end_write_grant'),
 
       // Start resizing a photo the moment it's picked, so Save only has to upload it.
-      prepareImage: file => processImage(file),
+      prepareImage: (file, o = {}) => processImage(file, o.max || 1800, o.quality || 0.84),
       async uploadImage(file, folder = 'products', prepared) {
         const blob = await (prepared || processImage(file));
-        const path = `${folder}/${crypto.randomUUID()}.webp`;
-        const { error } = await admin().storage.from('product-images').upload(path, blob, { contentType: 'image/webp', upsert: false });
+        const type = blob.type === 'image/jpeg' ? 'image/jpeg' : 'image/webp';
+        const path = `${folder}/${crypto.randomUUID()}.${type === 'image/jpeg' ? 'jpg' : 'webp'}`;
+        const { error } = await admin().storage.from('product-images').upload(path, blob, { contentType: type, upsert: false });
         fail(error, 'Photo upload failed');
         return admin().storage.from('product-images').getPublicUrl(path).data.publicUrl;
       },
@@ -319,6 +342,18 @@
         return data;
       },
 
+      async setReview(id, changes) {
+        const row = {};
+        if ('status' in changes) row.status = changes.status;
+        if ('featured' in changes) row.featured = !!changes.featured;
+        const { data, error } = await admin().from('reviews').update(row).eq('id', id).select('id');
+        changed(data, error);
+      },
+      async deleteReview(r) {
+        const { data, error } = await admin().from('reviews').delete().eq('id', r.id).select('id');
+        changed(data, error);
+        await this.removeImages(r.photos || []);
+      },
       async auditLog() {
         const { data, error } = await admin().from('audit_log').select('*').order('at', { ascending: false }).limit(100);
         fail(error);
@@ -347,6 +382,7 @@
       collections: sortBy(read('collections', SEED_COLLECTIONS)),
       products: sortBy(read('products', seedProducts())),
       settings: mergeSettings(read('settings', {})),
+      reviews: read('reviews', demoReviews()),
     });
     const log = (action, entity, rec) => {
       const list = read('audit', []);
@@ -357,6 +393,19 @@
     const unique = (list, item, what) => {
       if (list.some(x => x.slug === item.slug && x.id !== item.id)) throw new Error(`Another ${what} already uses that web address (slug).`);
     };
+
+    // Sample reviews so the Reviews screen and product pages can be shown before going live.
+    function demoReviews() {
+      const ago = d => new Date(Date.now() - d * 86400e3).toISOString();
+      return [
+        { id: 'r-1', created_at: ago(1), status: 'pending', featured: false, product_id: 'p-003', verified: true, rating: 5, name: 'Sam K.',
+          body: 'Reflective print is unreal under headlights. Heavy, warm and the fit is spot on. Already ordered a second one.', photos: [] },
+        { id: 'r-2', created_at: ago(6), status: 'approved', featured: true, product_id: 'p-001', verified: true, rating: 5, name: 'Jordan R.',
+          body: 'The ghost eye hoodie is the heaviest thing I own. Wore it all winter and it still looks new.', photos: ['assets/img/hood-eye.jpg'] },
+        { id: 'r-3', created_at: ago(12), status: 'approved', featured: false, product_id: 'p-001', verified: false, rating: 4, name: 'Mia T.',
+          body: 'Love the fit, runs a little big. Size down if you like it closer.', photos: [] },
+      ];
+    }
 
     // A few sample orders so the Orders screen can be shown before Stripe is connected.
     function demoOrders() {
@@ -390,7 +439,32 @@
       demoCredentials: DEMO,
       loadPublic: async () => {
         const s = state();
-        return { collections: s.collections.filter(c => c.visible), products: s.products.filter(p => p.status === 'published'), settings: s.settings };
+        return { collections: s.collections.filter(c => c.visible), products: s.products.filter(p => p.status === 'published'), settings: s.settings,
+                 reviews: s.reviews.filter(r => r.status === 'approved') };
+      },
+      async submitReview(r) {
+        await new Promise(res => setTimeout(res, 400));
+        if (!(r.rating >= 1 && r.rating <= 5)) throw new Error('Pick a star rating.');
+        if (!String(r.name || '').trim()) throw new Error('Add your name (first name is fine).');
+        if (String(r.body || '').trim().length < 10) throw new Error('Tell us a bit more (at least 10 characters).');
+        const list = read('reviews', demoReviews());
+        list.unshift({ id: 'r-' + Date.now().toString(36), created_at: new Date().toISOString(), status: 'pending', featured: false,
+          product_id: r.product_id || null, verified: !!(r.order_number && r.order_key), rating: r.rating, name: r.name.trim().slice(0, 60),
+          body: r.body.trim().slice(0, 1000), photos: (r.photos || []).slice(0, 3) });
+        write('reviews', list);
+        return true;
+      },
+      async setReview(id, changes) {
+        guard();
+        const list = read('reviews', demoReviews());
+        const it = list.find(x => x.id === id); if (!it) throw new Error('Review not found');
+        if ('status' in changes) it.status = changes.status;
+        if ('featured' in changes) it.featured = !!changes.featured;
+        write('reviews', list); log('update', 'reviews', { id, name: it.name });
+      },
+      async deleteReview(r) {
+        guard();
+        write('reviews', read('reviews', demoReviews()).filter(x => x.id !== r.id)); log('delete', 'reviews', { id: r.id, name: r.name });
       },
       loadAdmin: async () => state(),
       loadAccent: async () => state().settings.theme?.accent || null,
@@ -417,7 +491,7 @@
       },
       endWrite: async () => { writeUntil = 0; },
 
-      prepareImage: file => processImage(file, 1200, 0.8),
+      prepareImage: (file, o = {}) => processImage(file, o.max || 1200, o.quality || 0.8),
       async uploadImage(file, folder, prepared) {
         guard();
         const blob = await (prepared || processImage(file, 1200, 0.8));
@@ -475,7 +549,7 @@
       async orderStatus(number, key) {
         const o = read('orders', demoOrders()).find(x => String(x.number) === String(number) && x.access_key === key);
         return o ? { ...o, first_name: o.name.split(' ')[0], city: o.shipping_address.city, state: o.shipping_address.state, country: o.shipping_address.country,
-                     items: o.order_items.map(({ name, size, quantity, line_total, image }) => ({ name, size, quantity, line_total, image })) } : null;
+                     items: o.order_items.map(({ product_id, name, size, quantity, line_total, image }) => ({ product_id, name, size, quantity, line_total, image })) } : null;
       },
       orderBySession: async () => null,
       async saveOrder(o) {
@@ -514,7 +588,7 @@
         log('delete', 'orders', { id, name: o ? `SPX-${o.number}` : '' });
       },
       auditLog: async () => read('audit', []),
-      resetDemo() { ['collections', 'products', 'settings', 'audit', 'fails', 'orders'].forEach(k => localStorage.removeItem(KEY + k)); },
+      resetDemo() { ['collections', 'products', 'settings', 'audit', 'fails', 'orders', 'reviews'].forEach(k => localStorage.removeItem(KEY + k)); },
     };
   }
 

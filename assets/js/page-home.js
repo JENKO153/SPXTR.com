@@ -20,7 +20,7 @@
     $$('#best-tabs .tab').forEach(x => x.classList.toggle('active', x === t));
     renderBest(t.dataset.c);
   }));
-  $('#event-notify').addEventListener('submit', e => { e.preventDefault(); e.target.reset(); toast(`You're on the list for ${SITE.event.round}`); });
+  $('#event-notify').addEventListener('submit', e => { e.preventDefault(); e.target.reset(); toast(SITE.event.kind === 'drop' ? `We'll let you know when ${SITE.event.round || SITE.event.name} drops` : `You're on the list for ${SITE.event.round || SITE.event.name}`); });
   $('#news').addEventListener('submit', e => { e.preventDefault(); e.target.reset(); toast('Welcome to the crew. Check your inbox for 10% off'); });
   setInterval(tick, 1000);
 })();
@@ -94,7 +94,9 @@ function renderHome() {
   txt('#news-fine', nl.fine);
 
   $('#ig-handle').firstChild.textContent = SITE.instagram + ' ';
-  $('#ig-handle').href = safeLink(SITE.instagramUrl) || '#';
+  const ig = instagramLink();
+  $('#ig-handle').href = ig || '#';
+  if (ig) { $('#ig-handle').target = '_blank'; $('#ig-handle').rel = 'noopener noreferrer'; }
 }
 
 function renderTested() {
@@ -115,14 +117,27 @@ function renderReports() {
   txt('#reports-eyebrow', SITE.reportsSection.eyebrow);
   txt('#reports-title', SITE.reportsSection.title);
   const initials = name => String(name || '').split(/\s+/).filter(Boolean).map(w => w[0]).join('').slice(0, 2).toUpperCase();
-  $('#reports').innerHTML = (SITE.reports || []).filter(r => r.quote).map(r => `
+  // Approved customer reviews the admins marked "Feature on homepage" come first, then the hand-written ones.
+  const productName = id => (PRODUCTS.find(p => p.id === id) || {}).name || '';
+  const featured = (typeof REVIEWS !== 'undefined' ? REVIEWS : []).filter(r => r.status === 'approved' && r.featured)
+    .map(r => ({ quote: r.body, name: r.name, stars: r.rating, verified: r.verified, meta: productName(r.product_id), photos: r.photos || [] }));
+  const all = [...featured, ...(SITE.reports || [])].filter(r => r.quote).slice(0, 9);
+  const shown = all.length > 3 ? all.slice(0, all.length - all.length % 3) : all;   // full rows of 3 on desktop
+  $('#reports').innerHTML = shown.map(r => {
+    const photos = (r.photos || []).map(safeUrl).filter(Boolean);
+    return `
     <blockquote class="report">
       <div class="report__top"><span class="stars">${'★'.repeat(Math.max(1, Math.min(5, +r.stars || 5)))}</span>${r.verified ? '<span class="verified">✔ Verified buyer</span>' : ''}</div>
       <q>${esc(r.quote)}</q>
+      ${photos.length ? `<div class="report__photos">${photos.map(u => `<img src="${esc(u)}" alt="" loading="lazy">`).join('')}</div>` : ''}
       <footer><i>${esc(initials(r.name))}</i><div>${esc(r.name)}<small>${esc(r.meta)}</small></div></footer>
-    </blockquote>`).join('');
-  $('#ig').innerHTML = (SITE.ig || []).filter(x => x.image)
-    .map(x => `<a href="${esc(safeLink(x.url) || '#')}"${x.url ? ' target="_blank" rel="noopener noreferrer"' : ''}><img src="${imgSrc(x.image)}" alt="" loading="lazy"></a>`).join('');
+    </blockquote>`;
+  }).join('');
+  // Instagram strip: each photo opens its own post if one was pasted, otherwise the SPXTR profile.
+  $('#ig').innerHTML = (SITE.ig || []).filter(x => x.image).map(x => {
+    const u = safeLink(x.url) || instagramLink();
+    return `<a href="${esc(u || '#')}"${u ? ' target="_blank" rel="noopener noreferrer"' : ''}><img src="${imgSrc(x.image)}" alt="" loading="lazy"></a>`;
+  }).join('');
 }
 
 function renderTeam() {
@@ -147,27 +162,35 @@ function renderTeam() {
   }).join('');
 }
 
+// The countdown block is either an event (date, gates time, venue) or a product drop (just a timer).
+// Venue is optional for both: leave it blank and it simply isn't shown.
 function renderEvent() {
-  const ev = SITE.event;
+  const ev = SITE.event, drop = ev.kind === 'drop';
   $('#event').hidden = !ev.show;
   if (!ev.show) return;
   $('#event-img').src = safeUrl(ev.image) || IMG + 'event-bg.jpg';
   linkTo('#event-cta', ev.ctaText, ev.ctaUrl);
   const d = new Date(ev.date);
-  $('#event-title').innerHTML = `${esc(ev.name)}<br><em>${esc(ev.round)}</em>`;
+  txt('#event-eyebrow', `Sec. 04 // ${drop ? 'Next drop' : 'Next event'}`);
+  $('#event-title').innerHTML = `${esc(ev.name)}${ev.round ? `<br><em>${esc(ev.round)}</em>` : ''}`;
   $('#event-blurb').textContent = ev.blurb;
   $('#event-meta').innerHTML = [
     ['Date', isNaN(d) ? 'TBC' : d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })],
-    ['Gates', isNaN(d) ? 'TBC' : d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })],
-    ['Venue', ev.place],
-  ].map(([k, v]) => `<div><b>${esc(v)}</b>${k}</div>`).join('');
+    [drop ? 'Drops at' : 'Gates', isNaN(d) ? 'TBC' : d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })],
+    ev.place ? [drop ? 'Where' : 'Venue', ev.place] : null,
+  ].filter(Boolean).map(([k, v]) => `<div><b>${esc(v)}</b>${k}</div>`).join('');
+  const input = $('#event-notify input');
+  input.placeholder = drop ? 'Email for drop alerts' : 'Email for event alerts';
+  input.setAttribute('aria-label', input.placeholder);
   tick();
 }
-
 function tick() {
-  const t = Math.max(0, new Date(SITE.event.date) - Date.now()) / 1000 || 0;
+  const ev = SITE.event, drop = ev.kind === 'drop';
+  const ms = new Date(ev.date) - Date.now();
+  const t = Math.max(0, ms) / 1000 || 0;
   const v = { d: t / 86400, h: t / 3600 % 24, m: t / 60 % 60, s: t % 60 };
   $$('#clock b').forEach(b => b.textContent = String(Math.floor(v[b.dataset.u])).padStart(2, '0'));
+  txt('#clock-label', ms > 0 || isNaN(ms) ? (drop ? 'Drops in' : 'Gates open in') : (drop ? 'Out now' : 'Live now'));
 }
 
 function renderBest(c) {

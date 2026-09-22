@@ -61,6 +61,9 @@ if (window.top !== window.self) { document.documentElement.innerHTML = ''; throw
       reloadOrders(),
     ]);
     if (content) DATA = { ...DATA, ...content };
+    DATA.reviews = DATA.reviews || [];
+    const pending = DATA.reviews.filter(r => r.status === 'pending').length;
+    $('#rvCount').textContent = pending; $('#rvCount').hidden = !pending;
     applyAccent();
   }
   // The admin wears the same accent colour as the store (Admin -> Customise).
@@ -115,7 +118,7 @@ if (window.top !== window.self) { document.documentElement.innerHTML = ''; throw
     lastHash = location.hash;
     view.onclick = null; // views that need a delegated click handler set their own
     const [name, id] = (location.hash.slice(1) || 'overview').split('/');
-    const routes = { overview, orders, order: () => orderDetail(id), products, product: () => productEditor(id), pages, page: () => pageEditor(id), content: contentEditor, settings: settingsEditor, customise: customiseEditor, security };
+    const routes = { overview, orders, order: () => orderDetail(id), products, product: () => productEditor(id), pages, page: () => pageEditor(id), content: contentEditor, settings: settingsEditor, customise: customiseEditor, reviews, security };
     (routes[name] || overview)();
     const navKey = { order: 'orders', product: 'products', page: 'pages' }[name] || name;
     $$('#nav a[data-route]').forEach(a => a.classList.toggle('active', a.dataset.route === navKey));
@@ -229,6 +232,8 @@ if (window.top !== window.self) { document.documentElement.innerHTML = ''; throw
     const items = [];
     const toShip = DATA.orders.filter(o => o.status === 'paid').length;
     if (toShip) items.push(`<a href="#orders">${toShip} order${toShip === 1 ? '' : 's'}</a> waiting to be shipped`);
+    const pending = (DATA.reviews || []).filter(r => r.status === 'pending').length;
+    if (pending) items.push(`<a href="#reviews">${pending} review${pending === 1 ? '' : 's'}</a> waiting for approval`);
     DATA.products.filter(p => p.status === 'published' && p.stock === 0).forEach(p => items.push(`<a href="#product/${esc(p.id)}">${esc(p.name)}</a> is sold out`));
     DATA.products.filter(p => p.stock > 0 && p.stock < 10).forEach(p => items.push(`<a href="#product/${esc(p.id)}">${esc(p.name)}</a> has ${p.stock} left`));
     DATA.products.filter(p => p.status === 'published' && !p.collections.length).forEach(p => items.push(`<a href="#product/${esc(p.id)}">${esc(p.name)}</a> isn't on any page`));
@@ -237,8 +242,91 @@ if (window.top !== window.self) { document.documentElement.innerHTML = ''; throw
   }
 
   const ACTION = { insert: 'created', update: 'updated', delete: 'deleted' };
-  const ENTITY = { products: 'product', collections: 'page', site_settings: 'homepage & settings', orders: 'order' };
+  const ENTITY = { products: 'product', collections: 'page', site_settings: 'homepage & settings', orders: 'order', reviews: 'review' };
   const activityItem = a => `<li><time>${fmtDate(a.at)}</time><span>${esc(a.email || 'Admin')} ${ACTION[a.action] || esc(a.action)} ${ENTITY[a.entity] || esc(a.entity)}${a.summary && a.entity !== 'site_settings' ? ` <b>${esc(a.summary)}</b>` : ''}</span></li>`;
+
+  /* =====================================================================
+     REVIEWS
+     Customers send reviews from product pages and their order page. Each one waits here as
+     "pending" and only shows on the site once approved. Admins can't edit what a customer wrote,
+     only approve, hide, feature it on the homepage, or delete it (photos included).
+     ===================================================================== */
+  const REVIEW_STATUS = {
+    pending: '<span class="pill pill--draft">Waiting</span>',
+    approved: '<span class="pill pill--live">On the site</span>',
+    rejected: '<span class="pill pill--off">Hidden</span>',
+  };
+  const stars = n => `<span class="rv-admin__stars" aria-label="${n} out of 5">${'★'.repeat(n)}<span>${'★'.repeat(5 - n)}</span></span>`;
+  let reviewFilter = null;
+  function reviews() {
+    setTitle('Reviews');
+    const R = DATA.reviews || [];
+    const count = st => R.filter(r => r.status === st).length;
+    if (!reviewFilter) reviewFilter = count('pending') ? 'pending' : 'approved';
+    view.innerHTML = `
+      ${CMS.mode === 'demo' ? '<div class="notice notice--demo"><b>Sample reviews.</b> Real reviews appear here as customers send them.</div>' : ''}
+      <div class="panel">
+        <div class="toolbar">
+          <div class="seg" id="rvTabs" role="tablist">
+            ${[['pending', 'Waiting'], ['approved', 'On the site'], ['rejected', 'Hidden'], ['', 'All']].map(([k, l]) =>
+              `<button type="button" role="tab" data-f="${k}" class="${reviewFilter === k ? 'on' : ''}">${l} <small>${k ? count(k) : R.length}</small></button>`).join('')}
+          </div>
+          <span style="flex:1"></span>
+          <span class="muted" style="font-size:12px">★ Featured reviews show in the homepage crew reports</span>
+        </div>
+        <div class="rv-admin" id="rvList"></div>
+      </div>`;
+    const productName = id => (DATA.products.find(p => p.id === id) || {}).name;
+    const draw = () => {
+      const list = R.filter(r => !reviewFilter || r.status === reviewFilter);
+      $('#rvList').innerHTML = list.map(r => {
+        const photos = (r.photos || []).map(asset).filter(Boolean);
+        const pn = productName(r.product_id);
+        return `
+        <article class="rv-admin__item" data-id="${esc(r.id)}">
+          <div class="rv-admin__head">
+            ${stars(r.rating)} ${REVIEW_STATUS[r.status] || ''}
+            ${r.verified ? '<span class="pill pill--live">✔ Verified buyer</span>' : '<span class="pill pill--off">Not verified</span>'}
+            ${r.featured && r.status === 'approved' ? '<span class="pill pill--accent">★ Featured</span>' : ''}
+            <span style="flex:1"></span><time>${fmtDate(r.created_at)}</time>
+          </div>
+          <p class="rv-admin__body">${esc(r.body)}</p>
+          ${photos.length ? `<div class="rv-admin__photos">${photos.map(u => `<a href="${esc(u)}" target="_blank" rel="noopener noreferrer"><img src="${esc(u)}" alt="Customer photo" loading="lazy"></a>`).join('')}</div>` : ''}
+          <div class="rv-admin__foot">
+            <span><b>${esc(r.name)}</b>${pn ? ` on <a class="link" href="#product/${esc(r.product_id)}">${esc(pn)}</a>` : r.product_id ? ' on a deleted product' : ' about SPXTR'}</span>
+            <span style="flex:1"></span>
+            ${r.status !== 'approved' ? '<button type="button" class="btn btn--sm" data-act="approve">Approve</button>' : ''}
+            ${r.status === 'approved' ? `<button type="button" class="btn btn--ghost btn--sm" data-act="feature">${r.featured ? 'Unfeature' : '★ Feature on homepage'}</button>` : ''}
+            ${r.status !== 'rejected' ? '<button type="button" class="btn btn--ghost btn--sm" data-act="reject">Hide</button>' : ''}
+            <button type="button" class="btn btn--danger btn--sm" data-act="delete">Delete</button>
+          </div>
+        </article>`;
+      }).join('') || `<div class="empty">${R.length ? 'Nothing here.' : 'No reviews yet. They appear here when customers send them from a product page or their order page.'}</div>`;
+    };
+    draw();
+    $('#rvTabs').addEventListener('click', e => {
+      const b = e.target.closest('[data-f]'); if (!b) return;
+      reviewFilter = b.dataset.f; reviews();
+    });
+    $('#rvList').addEventListener('click', async e => {
+      const b = e.target.closest('[data-act]'); if (!b) return;
+      const r = R.find(x => String(x.id) === b.closest('[data-id]').dataset.id); if (!r) return;
+      const act = b.dataset.act;
+      if (act === 'delete' && !confirm(`Delete ${r.name}'s review${r.photos?.length ? ' and its photos' : ''}? This can't be undone.`)) return;
+      const change = { approve: { status: 'approved' }, reject: { status: 'rejected', featured: false }, feature: { featured: !r.featured } }[act];
+      const text = { approve: 'approve this review and put it on the site', reject: 'hide this review', feature: r.featured ? 'take this review off the homepage' : 'feature this review on the homepage', delete: 'delete this review' }[act];
+      const ok = await withWrite(`Enter your admin password to ${text}.`, async () => {
+        if (act === 'delete') await CMS.deleteReview(r); else await CMS.setReview(r.id, change);
+      });
+      if (!ok) return;
+      if (act === 'delete') DATA.reviews = R.filter(x => x !== r); else Object.assign(r, change);
+      toast({ approve: 'Approved. It\'s on the site now', reject: 'Hidden from the site', feature: r.featured ? 'Featured on the homepage' : 'Removed from the homepage', delete: 'Review deleted' }[act]);
+      const pending = DATA.reviews.filter(x => x.status === 'pending').length;
+      $('#rvCount').textContent = pending; $('#rvCount').hidden = !pending;
+      reviews();
+      refreshLater();
+    });
+  }
 
   /* =====================================================================
      ORDERS
@@ -1439,14 +1527,20 @@ if (window.top !== window.self) { document.documentElement.innerHTML = ''; throw
             </div>
           </div>
           <div class="section">
-            <h3>Next event</h3>
-            <label class="toggle"><input type="checkbox" name="evShow" ${ev.show ? 'checked' : ''}>Show the event section on the homepage</label>
+            <h3>Next event or drop</h3>
+            <label class="toggle"><input type="checkbox" name="evShow" ${ev.show ? 'checked' : ''}>Show the countdown section on the homepage</label>
             <div class="field-row">
               <label>Event name<input name="evName" maxlength="60" value="${esc(ev.name)}"></label>
               <label>Round / subtitle<input name="evRound" maxlength="40" value="${esc(ev.round)}"></label>
             </div>
             <div class="field-row">
-              <label>Venue<input name="evPlace" maxlength="80" value="${esc(ev.place)}"></label>
+              <label>Type<select name="evKind">
+                <option value="event" ${ev.kind !== 'drop' ? 'selected' : ''}>Event (gates time + venue)</option>
+                <option value="drop" ${ev.kind === 'drop' ? 'selected' : ''}>Product drop (countdown timer)</option>
+              </select></label>
+              <label>Venue <span class="hint">Optional. Leave blank for a drop</span><input name="evPlace" maxlength="80" value="${esc(ev.place)}"></label>
+            </div>
+            <div class="field-row">
               <label>Date &amp; time<input name="evDate" type="datetime-local" value="${esc(String(ev.date).slice(0, 16))}"></label>
             </div>
             <label>Blurb<textarea name="evBlurb" rows="3" maxlength="400">${esc(ev.blurb)}</textarea></label>
@@ -1493,7 +1587,7 @@ if (window.top !== window.self) { document.documentElement.innerHTML = ''; throw
       s.season = f.season.value.trim();
       s.freeShippingOver = Math.max(0, Number(f.freeShippingOver.value) || 0);
       s.instagram = f.instagram.value.trim();
-      Object.assign(s.event, { show: f.evShow.checked, name: f.evName.value.trim(), round: f.evRound.value.trim(), place: f.evPlace.value.trim(), date: f.evDate.value, blurb: f.evBlurb.value.trim() });
+      Object.assign(s.event, { show: f.evShow.checked, kind: f.evKind.value === 'drop' ? 'drop' : 'event', name: f.evName.value.trim(), round: f.evRound.value.trim(), place: f.evPlace.value.trim(), date: f.evDate.value, blurb: f.evBlurb.value.trim() });
     };
     form.addEventListener('input', e => { if (e.target.closest('.items')) return; read(); markDirty(); });
     form.addEventListener('change', e => { if (e.target.closest('.items')) return; read(); markDirty(); });

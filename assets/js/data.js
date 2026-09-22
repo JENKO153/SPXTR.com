@@ -96,6 +96,7 @@ const DEFAULT_SETTINGS = {
   },
   event: {
     show: true,
+    kind: 'event',          // 'event' (date + gates + venue) or 'drop' (product drop countdown)
     name: 'SPXTR Dirt Nights',
     round: 'Round 04',
     place: 'Glen Helen Raceway, CA',

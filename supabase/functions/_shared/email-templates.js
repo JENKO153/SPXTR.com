@@ -273,3 +273,31 @@ export function shopNotificationEmail({ site, accent, order: o, items: list, ins
     ].join('\n'),
   };
 }
+
+// =====================================================================
+// 4. New review waiting for approval (to the shop)
+// =====================================================================
+export function reviewAlertEmail({ site, accent, review, productName, instagram }) {
+  accent = readable(accent);
+  const stars = '★'.repeat(review.rating) + '☆'.repeat(5 - review.rating);
+  const body = `
+    <div style="margin:22px 0 6px;font:400 22px/1 ${BODY};color:${accent};letter-spacing:.1em">${stars}</div>
+    <div style="margin:0 0 16px;padding:18px 20px;background:${C.panel};border-left:4px solid ${accent};font:400 15px/1.6 ${BODY};color:${C.bone}">
+      "${esc(review.body)}"<div style="margin-top:10px;font:500 12px/1.4 ${MONO};letter-spacing:.1em;text-transform:uppercase;color:${C.muted}">
+      ${esc(review.name)}${review.verified ? ' · Verified buyer' : ''}${review.photos?.length ? ` · ${review.photos.length} photo${review.photos.length === 1 ? '' : 's'}` : ''}</div>
+    </div>
+    <div style="margin:18px 0 4px">${button(`${site}/admin/dashboard/#reviews`, 'Review it in the admin', accent)}</div>`;
+  return {
+    subject: `New review to approve${productName ? `: ${productName}` : ''} (${review.rating}★)`,
+    html: layout({
+      site, accent, instagram,
+      preheader: `${review.name} left a ${review.rating}-star review. It won't show on the site until you approve it.`,
+      eyebrowText: 'New review // waiting for you',
+      title: 'Fresh<br>review.',
+      intro: `<b style="color:${C.bone}">${esc(review.name)}</b> reviewed ${productName ? `<b style="color:${C.bone}">${esc(productName)}</b>` : 'SPXTR'}. It stays hidden until you approve it.`,
+      body,
+      footerNote: 'This alert goes to the shop only.',
+    }),
+    text: `New review to approve (${review.rating}/5) from ${review.name}${productName ? ` on ${productName}` : ''}:\n\n"${review.body}"\n\nApprove it: ${site}/admin/dashboard/#reviews`,
+  };
+}

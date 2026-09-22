@@ -15,6 +15,14 @@ const LIVE = !!window.SPX_CONFIG.stripe?.enabled && CMS.configured && !PREVIEW;
 let SITE = CMS.mergeSettings({});
 let COLLECTIONS = [];
 let PRODUCTS = [];
+let REVIEWS = [];   // approved customer reviews (reviews.js)
+
+// The Instagram profile: the address set in the admin if there is one, otherwise built from the handle.
+function instagramLink() {
+  if (/^https:\/\/(www\.)?instagram\.com\//i.test(SITE.instagramUrl || '')) return SITE.instagramUrl;
+  const handle = String(SITE.instagram || '').trim().replace(/^@/, '');
+  return /^[A-Za-z0-9._]{1,30}$/.test(handle) ? `https://www.instagram.com/${handle}/` : '';
+}
 
 const money = n => STORE.currency + Number(n).toLocaleString('en-US', { minimumFractionDigits: n % 1 ? 2 : 0, maximumFractionDigits: 2 });
 // Only real image addresses get through: https, this site's images, uploaded photos (demo) or a blob: preview.
@@ -26,7 +34,7 @@ const productUrl = p => `product/?p=${encodeURIComponent(p.slug)}`;
 async function loadStore() {
   try {
     const data = PREVIEW ? await previewData() : await CMS.loadPublic();
-    SITE = data.settings; COLLECTIONS = data.collections; PRODUCTS = data.products;
+    SITE = data.settings; COLLECTIONS = data.collections; PRODUCTS = data.products; REVIEWS = data.reviews || [];
   } catch (err) {
     console.error(err);
     document.body.insertAdjacentHTML('afterbegin', '<div style="background:#FF3B2F;color:#fff;padding:10px 16px;font:600 14px sans-serif;text-align:center">The store is having trouble loading. Please refresh in a moment.</div>');
@@ -107,7 +115,7 @@ function renderChrome(active = '') {
           </div>
           <div><h5>// Shop</h5><ul><li><a href="shop/?filter=new">New</a></li>${COLLECTIONS.map(c => `<li><a href="shop/?page=${encodeURIComponent(c.slug)}">${esc(c.name)}</a></li>`).join('')}</ul></div>
           <div><h5>// Support</h5><ul><li><a href="#">Shipping</a></li><li><a href="#">Returns</a></li><li><a href="#">Size guide</a></li><li><a href="#">Warranty</a></li><li><a href="mailto:${esc(SITE.footer.email || STORE.email)}">Contact</a></li></ul></div>
-          <div><h5>// The crew</h5><ul><li><a href="./#team">Team riders</a></li><li><a href="./#event">Events</a></li><li><a href="${esc(SITE.instagramUrl || '#')}">Instagram</a></li><li><a href="#">YouTube</a></li></ul></div>
+          <div><h5>// The crew</h5><ul><li><a href="./#team">Team riders</a></li><li><a href="./#event">Events</a></li><li><a href="${esc(instagramLink() || '#')}"${instagramLink() ? ' target="_blank" rel="noopener noreferrer"' : ''}>Instagram</a></li><li><a href="#">YouTube</a></li></ul></div>
         </div>
         <div class="footer__bottom">
           <span>© ${new Date().getFullYear()} ${STORE.name} · ${esc(SITE.footer.tagline)}</span>

@@ -252,7 +252,8 @@ declare
   rec jsonb := case when tg_op = 'DELETE' then to_jsonb(old) else to_jsonb(new) end;
   actor text := nullif(current_setting('spx.actor', true), '');
 begin
-  if actor = 'Email' or (actor = 'Checkout' and tg_table_name = 'products') then
+  if actor = 'Email' or (actor = 'Checkout' and tg_table_name = 'products')
+     or (tg_table_name = 'reviews' and tg_op = 'INSERT') then
     return null;
   end if;
   insert into public.audit_log (user_id, email, action, entity, entity_id, summary)
@@ -340,27 +341,6 @@ create policy site_settings_update on public.site_settings for update to authent
 drop policy if exists audit_log_read on public.audit_log;
 create policy audit_log_read on public.audit_log for select to authenticated using (public.admin_ok());
 revoke insert, update, delete, truncate on public.audit_log from authenticated;
-
--- ---------------------------------------------------------------------
--- Everything a page needs in ONE request (pages, products with their page links, settings).
--- security invoker = the row-level security rules still apply: visitors get only published
--- products and visible pages; a signed-in admin gets drafts too. One round trip instead of
--- three keeps the site fast even when the database is slow to answer.
--- ---------------------------------------------------------------------
-create or replace function public.store_data() returns jsonb
-language sql stable security invoker set search_path = public as $$
-  select jsonb_build_object(
-    'collections', coalesce((select jsonb_agg(to_jsonb(c) order by c.sort_order) from public.collections c), '[]'::jsonb),
-    'products', coalesce((
-      select jsonb_agg(to_jsonb(p) || jsonb_build_object('product_collections', coalesce((
-               select jsonb_agg(jsonb_build_object('collection_id', pc.collection_id))
-               from public.product_collections pc where pc.product_id = p.id), '[]'::jsonb))
-             order by p.sort_order)
-      from public.products p), '[]'::jsonb),
-    'settings', (select data from public.site_settings where id = 1)
-  );
-$$;
-grant execute on function public.store_data() to anon, authenticated;
 
 -- ---------------------------------------------------------------------
 -- Saving a product and its pages in one transaction.
@@ -623,7 +603,8 @@ language sql stable security definer set search_path = public as $$
     'shipping_method', o.shipping_method, 'carrier', o.carrier, 'tracking_number', o.tracking_number,
     'tracking_url', o.tracking_url, 'shipped_at', o.shipped_at,
     'items', coalesce((select jsonb_agg(jsonb_build_object('name', i.name, 'size', i.size, 'quantity', i.quantity,
-                                                           'line_total', i.line_total, 'image', i.image) order by i.id)
+                                                           'line_total', i.line_total, 'image', i.image,
+                                                           'product_id', i.product_id) order by i.id)
                        from public.order_items i where i.order_id = o.id), '[]'::jsonb));
 $$;
 revoke all on function public.order_public_view(public.orders) from public, anon, authenticated;
@@ -651,6 +632,81 @@ revoke all on function public.mark_order_email(uuid, text) from public, anon, au
 grant execute on function public.record_paid_order(jsonb, jsonb) to service_role;
 grant execute on function public.record_refund(text, int, boolean) to service_role;
 grant execute on function public.mark_order_email(uuid, text) to service_role;
+
+-- ---------------------------------------------------------------------
+-- Customer reviews. Submitted through the submit-review Edge Function (never straight from the
+-- browser), held as 'pending' until an admin approves them. The public sees approved reviews only.
+-- Admins can approve, reject, feature on the homepage or delete, but can't edit what a customer wrote.
+-- ---------------------------------------------------------------------
+create table if not exists public.reviews (
+  id uuid primary key default gen_random_uuid(),
+  created_at timestamptz not null default now(),
+  status text not null default 'pending' check (status in ('pending', 'approved', 'rejected')),
+  featured boolean not null default false,            -- also show in the homepage "crew reports"
+  product_id uuid references public.products(id) on delete set null,
+  order_id uuid references public.orders(id) on delete set null,
+  verified boolean not null default false,            -- came from a real order (order link + key)
+  rating int not null check (rating between 1 and 5),
+  name text not null check (char_length(name) between 1 and 60),
+  body text not null check (char_length(body) between 1 and 1000),
+  photos text[] not null default '{}' check (public.valid_asset_urls(photos) and coalesce(array_length(photos, 1), 0) <= 3)
+);
+create index if not exists reviews_status_idx on public.reviews (status, created_at desc);
+create index if not exists reviews_product_idx on public.reviews (product_id);
+
+-- Rate limiting for the review form (hashed IP + time only). Server-only.
+create table if not exists public.review_submissions (
+  id bigserial primary key,
+  ip_hash text not null,
+  at timestamptz not null default now()
+);
+create index if not exists review_submissions_ip_idx on public.review_submissions (ip_hash, at desc);
+
+drop trigger if exists reviews_audit on public.reviews;
+create trigger reviews_audit after insert or update or delete on public.reviews for each row execute function public.log_change();
+
+alter table public.reviews enable row level security;
+alter table public.review_submissions enable row level security;
+revoke all on public.review_submissions from anon, authenticated;
+revoke all on public.reviews from anon, authenticated;
+-- Public columns only (order_id stays private). Nobody but the server can add a review.
+grant select (id, created_at, status, featured, product_id, verified, rating, name, body, photos) on public.reviews to anon, authenticated;
+grant update (status, featured) on public.reviews to authenticated;
+grant delete on public.reviews to authenticated;
+
+drop policy if exists reviews_read on public.reviews;
+create policy reviews_read on public.reviews for select to anon, authenticated using (status = 'approved' or public.admin_ok());
+drop policy if exists reviews_update on public.reviews;
+create policy reviews_update on public.reviews for update to authenticated using (public.can_write()) with check (public.can_write());
+drop policy if exists reviews_delete on public.reviews;
+create policy reviews_delete on public.reviews for delete to authenticated using (public.can_write());
+
+-- ---------------------------------------------------------------------
+-- Everything a page needs in ONE request (pages, products with their page links, settings, reviews).
+-- security invoker = the row-level security rules still apply: visitors get only published
+-- products, visible pages and approved reviews; a signed-in admin gets drafts and pending reviews too.
+-- One round trip instead of several keeps the site fast even when the database is slow to answer.
+-- ---------------------------------------------------------------------
+create or replace function public.store_data() returns jsonb
+language sql stable security invoker set search_path = public as $$
+  select jsonb_build_object(
+    'collections', coalesce((select jsonb_agg(to_jsonb(c) order by c.sort_order) from public.collections c), '[]'::jsonb),
+    'products', coalesce((
+      select jsonb_agg(to_jsonb(p) || jsonb_build_object('product_collections', coalesce((
+               select jsonb_agg(jsonb_build_object('collection_id', pc.collection_id))
+               from public.product_collections pc where pc.product_id = p.id), '[]'::jsonb))
+             order by p.sort_order)
+      from public.products p), '[]'::jsonb),
+    'settings', (select data from public.site_settings where id = 1),
+    'reviews', coalesce((
+      select jsonb_agg(jsonb_build_object('id', r.id, 'created_at', r.created_at, 'status', r.status, 'featured', r.featured,
+                                          'product_id', r.product_id, 'verified', r.verified, 'rating', r.rating,
+                                          'name', r.name, 'body', r.body, 'photos', r.photos) order by r.created_at desc)
+      from (select id, created_at, status, featured, product_id, verified, rating, name, body, photos
+            from public.reviews order by created_at desc limit 300) r), '[]'::jsonb)
+  );
+$$;
+grant execute on function public.store_data() to anon, authenticated;
 
 -- ---------------------------------------------------------------------
 -- Image storage: public to view, only a password-confirmed admin can upload/delete.
