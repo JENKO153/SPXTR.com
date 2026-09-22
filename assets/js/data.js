@@ -16,7 +16,6 @@ const STORE = Object.freeze({
   brand: { wordmark: 'assets/brand/spxtr-wordmark.jpg', ghost: 'assets/brand/spxtr-ghost.jpg',
            // transparent version of the wordmark, used as the stencil for the giant footer logo
            wordmarkMask: 'assets/brand/spxtr-wordmark-mask.png' },
-  categories: ['Hoodies', 'Tees', 'Outerwear', 'Bottoms', 'Headwear', 'Gear'],
   badges: ['New', 'Bestseller', 'Limited', 'Low stock', 'Sale'],
 });
 
@@ -42,6 +41,8 @@ const DEFAULT_SETTINGS = {
   theme: { accent: '#D4FF1F' },  // Admin -> Customise
   season: 'Season 04',
   freeShippingOver: 100,
+  // Product types (Hoodies, Tees, ...). Admin -> Products -> Product types. Used for the shop filters.
+  productTypes: ['Hoodies', 'Tees', 'Outerwear', 'Bottoms', 'Headwear', 'Gear'],
   instagram: '@spxtr',
   instagramUrl: '',
   announcements: ['Season 04 out now', 'Free shipping over $100', 'Rider tested. Crash approved', '30-day returns, no questions', 'Join the crew for 10% off your first order'],

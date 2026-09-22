@@ -349,3 +349,13 @@ tbody tr:last-child td { border: 0; }
 .rv-admin__photos img { width: 100%; height: 100%; object-fit: cover; }
 .rv-admin__foot { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 14px; }
 .seg button small { opacity: .7; margin-left: 4px; }
+
+/* ---------- product types ---------- */
+.types { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
+.type-chip { display: inline-flex; align-items: center; gap: 6px; padding: 6px 8px 6px 12px; background: var(--surface-2); border: 1px solid var(--line-2); font: 600 14px var(--cond); letter-spacing: .06em; text-transform: uppercase; color: var(--bone); }
+.type-chip small { font: 500 11px var(--mono); color: var(--muted); }
+.type-chip button { width: 22px; height: 22px; color: var(--muted); font-size: 16px; line-height: 1; }
+.type-chip button:hover { color: var(--hot); }
+.type-chip [data-rm]:hover { color: var(--red); }
+.types__add { display: flex; gap: 8px; max-width: 420px; }
+.types__add input { flex: 1; height: 38px; }

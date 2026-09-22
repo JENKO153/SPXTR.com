@@ -729,15 +729,28 @@ create policy product_images_delete on storage.objects for delete to authenticat
   using (bucket_id = 'product-images' and public.can_write());
 
 -- ---------------------------------------------------------------------
--- Starter pages (safe to delete/rename from the admin afterwards)
+-- Starter pages: added ONCE, the very first time this file runs on an empty database.
+-- Re-running this file later never brings back pages that were deleted in the admin.
 -- ---------------------------------------------------------------------
-insert into public.collections (slug, name, tagline, hero_image, sort_order) values
-  ('moto', 'Moto', 'Built for the pits, the track and the ride home.', 'assets/img/d-moto.jpg', 1),
-  ('military', 'Military', 'Utility-first gear with a tactical edge.', 'assets/img/ruck-gear.jpg', 2),
-  ('rock-climbing', 'Rock Climbing', 'Layers that move with you on the wall.', 'assets/img/d-climb.jpg', 3),
-  ('bmx', 'BMX', 'Park-tested pieces that survive the slams.', 'assets/img/d-bmx.jpg', 4),
-  ('snow', 'Snow', 'Warm, loud and made for the lift line.', 'assets/img/d-snow.jpg', 5)
-on conflict (slug) do nothing;
+create table if not exists public.setup_done (what text primary key, at timestamptz not null default now());
+alter table public.setup_done enable row level security;
+revoke all on public.setup_done from anon, authenticated;
+
+do $$
+begin
+  if not exists (select 1 from public.setup_done where what = 'starter_pages') then
+    if not exists (select 1 from public.collections) then
+      insert into public.collections (slug, name, tagline, hero_image, sort_order) values
+        ('moto', 'Moto', 'Built for the pits, the track and the ride home.', 'assets/img/d-moto.jpg', 1),
+        ('military', 'Military', 'Utility-first gear with a tactical edge.', 'assets/img/ruck-gear.jpg', 2),
+        ('rock-climbing', 'Rock Climbing', 'Layers that move with you on the wall.', 'assets/img/d-climb.jpg', 3),
+        ('bmx', 'BMX', 'Park-tested pieces that survive the slams.', 'assets/img/d-bmx.jpg', 4),
+        ('snow', 'Snow', 'Warm, loud and made for the lift line.', 'assets/img/d-snow.jpg', 5)
+      on conflict (slug) do nothing;
+    end if;
+    insert into public.setup_done (what) values ('starter_pages');
+  end if;
+end $$;
 
 -- =====================================================================
 -- AFTER RUNNING THIS FILE:

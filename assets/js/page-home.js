@@ -16,10 +16,11 @@
   $$('[data-rail]').forEach(b => b.addEventListener('click', () => {
     const r = $('#rail'); r.scrollBy({ left: r.clientWidth * 0.75 * +b.dataset.rail, behavior: 'smooth' });
   }));
-  $$('#best-tabs .tab').forEach(t => t.addEventListener('click', () => {
+  $('#best-tabs').addEventListener('click', e => {
+    const t = e.target.closest('.tab'); if (!t) return;
     $$('#best-tabs .tab').forEach(x => x.classList.toggle('active', x === t));
     renderBest(t.dataset.c);
-  }));
+  });
   $('#event-notify').addEventListener('submit', e => { e.preventDefault(); e.target.reset(); toast(SITE.event.kind === 'drop' ? `We'll let you know when ${SITE.event.round || SITE.event.name} drops` : `You're on the list for ${SITE.event.round || SITE.event.name}`); });
   $('#news').addEventListener('submit', e => { e.preventDefault(); e.target.reset(); toast('Welcome to the crew. Check your inbox for 10% off'); });
   setInterval(tick, 1000);
@@ -76,6 +77,7 @@ function renderHome() {
   renderEvent();
   txt('#best-eyebrow', SITE.bestSection.eyebrow);
   txt('#best-title', SITE.bestSection.title);
+  renderBestTabs();
   renderBest($('#best-tabs .tab.active')?.dataset.c || 'All');
   renderTested();
   renderReports();
@@ -193,6 +195,16 @@ function tick() {
   txt('#clock-label', ms > 0 || isNaN(ms) ? (drop ? 'Drops in' : 'Gates open in') : (drop ? 'Out now' : 'Live now'));
 }
 
+// Tabs for the product types that have something in stock (up to 4, in the order set in the admin).
+function renderBestTabs() {
+  const current = $('#best-tabs .tab.active')?.dataset.c || 'All';
+  const inStock = new Set(PRODUCTS.filter(p => p.stock > 0).map(p => p.category));
+  const order = SITE.productTypes || [];
+  const types = [...order.filter(c => inStock.has(c)), ...[...inStock].filter(c => c && !order.includes(c))].slice(0, 4);
+  const active = types.includes(current) ? current : 'All';
+  $('#best-tabs').innerHTML = ['All', ...types].map(c => `<button class="tab ${c === active ? 'active' : ''}" data-c="${esc(c)}">${esc(c)}</button>`).join('');
+  $('#best-tabs').hidden = types.length < 2;
+}
 function renderBest(c) {
   const list = PRODUCTS.filter(p => (c === 'All' || p.category === c) && p.stock > 0).sort((a, b) => (b.badge === 'Bestseller') - (a.badge === 'Bestseller')).slice(0, 8);
   $('#best').innerHTML = list.map(productCard).join('') || '<p class="muted">Nothing here yet.</p>';

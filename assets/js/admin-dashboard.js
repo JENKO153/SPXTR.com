@@ -670,6 +670,13 @@ if (window.top !== window.self) { document.documentElement.innerHTML = ''; throw
           <thead><tr><th>Product</th><th>Pages</th><th>Status</th><th class="num">Stock</th><th class="num">Price</th></tr></thead>
           <tbody id="rows"></tbody>
         </table></div>
+      </div>
+      <div class="panel" style="margin-top:18px">
+        <div class="panel__head"><h2>Product types</h2><span class="muted" style="font-size:12px">The "Type" filter in the shop and the homepage tabs. Only types with products show on the site.</span></div>
+        <div class="panel__body">
+          <div class="types" id="types"></div>
+          <form class="types__add" id="typeForm"><input id="newType" maxlength="40" placeholder="e.g. Jerseys" aria-label="New product type"><button class="btn btn--ghost btn--sm">+ Add type</button></form>
+        </div>
       </div>`;
     const draw = () => {
       const q = $('#q').value.toLowerCase(), st = $('#fStatus').value, pg = $('#fPage').value;
@@ -689,6 +696,53 @@ if (window.top !== window.self) { document.documentElement.innerHTML = ''; throw
     ['#q', '#fStatus', '#fPage'].forEach(s => $(s).addEventListener('input', draw));
     $('#rows').addEventListener('click', e => { const tr = e.target.closest('tr[data-id]'); if (tr) go('#product/' + tr.dataset.id); });
     draw();
+
+    // Product types: add, remove, reorder. A type still used by products can't be removed.
+    const used = t => DATA.products.filter(p => p.category === t).length;
+    const drawTypes = () => {
+      const types = productTypes();
+      $('#types').innerHTML = types.map((t, i) => `<span class="type-chip" data-i="${i}">
+          ${i ? `<button type="button" data-move="-1" aria-label="Move ${esc(t)} left">‹</button>` : ''}
+          <b>${esc(t)}</b><small>${used(t)}</small>
+          ${i < types.length - 1 ? `<button type="button" data-move="1" aria-label="Move ${esc(t)} right">›</button>` : ''}
+          <button type="button" data-rm aria-label="Remove ${esc(t)}">×</button></span>`).join('') || '<span class="muted">No types yet. Add one below.</span>';
+    };
+    const saveTypes = async (types, text, done) => {
+      const next = { ...DATA.settings, productTypes: types };
+      const ok = await withWrite(`Enter your admin password to ${text}.`, async () => {
+        await CMS.saveSettings(next);
+        DATA.settings = CMS.mergeSettings(next);
+      });
+      if (ok) { toast(done); drawTypes(); }
+    };
+    $('#types').addEventListener('click', e => {
+      const chip = e.target.closest('[data-i]'); if (!chip) return;
+      const types = productTypes(), i = +chip.dataset.i, t = types[i];
+      if (e.target.closest('[data-rm]')) {
+        const n = used(t);
+        if (n) { toast(`${n} product${n === 1 ? ' is' : 's are'} still set to "${t}". Change ${n === 1 ? 'it' : 'them'} to another type first.`, true); return; }
+        if (!confirm(`Remove the product type "${t}"?`)) return;
+        saveTypes(types.filter((_, j) => j !== i), `remove "${t}"`, `Removed "${t}"`);
+      } else if (e.target.closest('[data-move]')) {
+        const j = i + +e.target.closest('[data-move]').dataset.move;
+        [types[i], types[j]] = [types[j], types[i]];
+        saveTypes(types, 'reorder the product types', 'Order saved');
+      }
+    });
+    $('#typeForm').addEventListener('submit', e => {
+      e.preventDefault();
+      const t = $('#newType').value.trim().replace(/\s+/g, ' ').slice(0, 40);
+      if (!t) return;
+      const types = productTypes();
+      if (types.some(x => x.toLowerCase() === t.toLowerCase())) { toast(`"${t}" is already there`, true); return; }
+      saveTypes([...types, t], `add the product type "${t}"`, `Added "${t}"`).then(() => { $('#newType').value = ''; });
+    });
+    drawTypes();
+  }
+  // The admin's product types, plus any type a product still uses (so nothing ever goes missing).
+  function productTypes() {
+    const list = (DATA.settings.productTypes || []).filter(t => typeof t === 'string' && t.trim());
+    return [...new Set([...list, ...DATA.products.map(p => p.category).filter(Boolean)])];
   }
 
   /* =====================================================================
@@ -816,7 +870,7 @@ if (window.top !== window.self) { document.documentElement.innerHTML = ''; throw
     if (id !== 'new' && !existing) { toast('That product no longer exists', true); go('#products'); return; }
     const original = existing ? clone(existing) : null;
     const p = existing ? clone(existing) : {
-      id: null, slug: '', sku: '', name: '', category: STORE.categories[0], price: '', compare_at: null, description: '', spec: '',
+      id: null, slug: '', sku: '', name: '', category: productTypes()[0] || '', price: '', compare_at: null, description: '', spec: '',
       sizes: ['S', 'M', 'L', 'XL'], colors: ['#0A0A0A'], images: [], stock: 0, badge: 'New', is_new: true, status: 'draft',
       sort_order: DATA.products.reduce((m, x) => Math.max(m, x.sort_order || 0), 0) + 1, collections: [],
     };
@@ -835,7 +889,7 @@ if (window.top !== window.self) { document.documentElement.innerHTML = ''; throw
               <span class="hint">Lowercase letters, numbers and dashes. Filled in from the title automatically.</span>
             </label>
             <div class="field-row">
-              <label>Product type<select name="category">${[...new Set([...STORE.categories, p.category])].map(c => `<option ${c === p.category ? 'selected' : ''}>${esc(c)}</option>`).join('')}</select></label>
+              <label>Product type<select name="category" required>${[...new Set([...productTypes(), p.category].filter(Boolean))].map(c => `<option ${c === p.category ? 'selected' : ''}>${esc(c)}</option>`).join('')}</select></label>
               <label>SKU / code<input name="sku" maxlength="40" value="${esc(p.sku)}" placeholder="SPX-H-001"></label>
             </div>
             <div><label style="margin-bottom:8px">Visibility</label>

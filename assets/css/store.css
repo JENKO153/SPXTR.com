@@ -33,6 +33,7 @@
 }
 
 *, *::before, *::after { box-sizing: border-box; }
+[hidden] { display: none !important; }
 html { -webkit-text-size-adjust: 100%; scroll-behavior: smooth; overflow-x: clip; background: var(--bg); }
 /* Hidden until the real content has rendered (see renderChrome). If scripts ever fail,
    the page still appears after 20 seconds rather than staying blank forever. */

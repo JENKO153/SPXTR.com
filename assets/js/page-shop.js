@@ -14,16 +14,43 @@
   renderChrome(state.filter === 'new' ? 'new' : params.get('page') || 'shop');
   $('#filter-toggle').addEventListener('click', () => $('#filters').classList.toggle('open'));
 
-  const prices = [['Under $40', 0, 40], ['$40 – $100', 40, 100], ['$100 – $150', 100, 150], ['$150+', 150, 1e9]];
+  // Price bands are worked out from what's actually in the shop, in the store's currency.
+  let prices = [];
+  function priceBands() {
+    const all = PRODUCTS.map(p => Number(p.price) || 0);
+    if (!all.length) return [];
+    const max = Math.max(...all);
+    const steps = [25, 50, 75, 100, 150, 200, 300, 500, 1000].filter(x => x < max);
+    // Up to 3 cut points spread through the range, so every band has something in it.
+    const cuts = [];
+    for (const x of steps) if (!cuts.length || x >= cuts[cuts.length - 1] * 1.5) cuts.push(x);
+    const pick = cuts.length > 3 ? [cuts[0], cuts[Math.floor(cuts.length / 2)], cuts[cuts.length - 1]] : cuts;
+    const edges = [0, ...pick, 1e9];
+    return edges.slice(0, -1).map((lo, i) => {
+      const hi = edges[i + 1];
+      const label = lo === 0 ? `Under ${money(hi)}` : hi === 1e9 ? `${money(lo)}+` : `${money(lo)} – ${money(hi)}`;
+      return [label, lo, hi];
+    }).filter(([, lo, hi]) => all.some(v => v >= lo && v < hi));
+  }
 
+  // Only show filters that match what's in the shop: pages with products in them, product types
+  // that are in use (in the order set in the admin), and the sizes actually stocked.
   function buildFilters() {
     const count = fn => PRODUCTS.filter(fn).length;
-    $('#f-page').innerHTML = COLLECTIONS.map(c => `<label class="check"><input type="checkbox" value="${esc(c.slug)}" ${state.pages.has(c.slug) ? 'checked' : ''}>${esc(c.name)}<small>${count(p => p.collections.includes(c.id))}</small></label>`).join('') || '<small class="muted">No pages yet</small>';
-    const cats = [...new Set(PRODUCTS.map(p => p.category))];
-    $('#f-cat').innerHTML = cats.map(c => `<label class="check"><input type="checkbox" value="${esc(c)}" ${state.cats.has(c) ? 'checked' : ''}>${esc(c)}<small>${count(p => p.category === c)}</small></label>`).join('');
-    const sizes = [...new Set(PRODUCTS.flatMap(p => p.sizes))];
-    $('#f-size').innerHTML = sizes.map(s => `<button data-size="${esc(s)}" class="${state.sizes.has(s) ? 'on' : ''}">${esc(s)}</button>`).join('');
-    $('#f-price').innerHTML = prices.map((p, i) => `<label class="check"><input type="radio" name="price" value="${i}">${p[0]}</label>`).join('');
+    const group = (sel, html) => { $(sel).innerHTML = html; $(sel).closest('.filter-group').hidden = !html; };
+    group('#f-page', COLLECTIONS.map(c => [c, count(p => p.collections.includes(c.id))]).filter(([c, n]) => n || state.pages.has(c.slug))
+      .map(([c, n]) => `<label class="check"><input type="checkbox" value="${esc(c.slug)}" ${state.pages.has(c.slug) ? 'checked' : ''}>${esc(c.name)}<small>${n}</small></label>`).join(''));
+    const inUse = [...new Set(PRODUCTS.map(p => p.category).filter(Boolean))];
+    const order = SITE.productTypes || [];
+    const cats = [...order.filter(c => inUse.includes(c)), ...inUse.filter(c => !order.includes(c))];
+    group('#f-cat', cats.map(c => `<label class="check"><input type="checkbox" value="${esc(c)}" ${state.cats.has(c) ? 'checked' : ''}>${esc(c)}<small>${count(p => p.category === c)}</small></label>`).join(''));
+    const SIZE_ORDER = ['XXS', 'XS', 'S', 'M', 'L', 'XL', '2XL', 'XXL', '3XL', 'XXXL', '4XL'];
+    const rank = s => { const i = SIZE_ORDER.indexOf(String(s).toUpperCase()); return i >= 0 ? i : isNaN(parseFloat(s)) ? 999 : 100 + parseFloat(s); };
+    const sizes = [...new Set(PRODUCTS.flatMap(p => p.sizes))].sort((a, b) => rank(a) - rank(b));
+    group('#f-size', sizes.length > 1 ? sizes.map(s => `<button data-size="${esc(s)}" class="${state.sizes.has(s) ? 'on' : ''}">${esc(s)}</button>`).join('') : '');
+    prices = priceBands();
+    group('#f-price', prices.length > 1 ? prices.map((p, i) => `<label class="check"><input type="radio" name="price" value="${i}">${esc(p[0])}</label>`).join('') : '');
+    $('#clear').closest('.filter-group').hidden = !PRODUCTS.length;
   }
 
   function renderHead() {
