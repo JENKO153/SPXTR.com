@@ -247,9 +247,11 @@ input, select { font: inherit; color: inherit; }
 .rider__img img { width: 100%; height: 100%; object-fit: cover; filter: grayscale(1) contrast(1.1); transition: filter .5s, transform 1s var(--ease); }
 .rider:hover .rider__img img { filter: grayscale(0); transform: scale(1.04); }
 .rider__num { position: absolute; right: 12px; top: 6px; z-index: 2; font: 900 88px/1 var(--stencil); color: transparent; -webkit-text-stroke: 2px var(--hot); }
+.rider__ig { display: inline-flex; align-items: center; gap: 7px; margin-bottom: 10px; font: 500 12px var(--mono); letter-spacing: .06em; color: var(--muted); }
+.rider__ig:hover { color: var(--hot); }
 .rider__body { padding: 18px 20px 22px; border-top: 3px solid var(--hot); }
 .rider__body h3 { font: 800 30px/.95 var(--stencil); text-transform: uppercase; margin: 6px 0 12px; color: var(--bone); }
-.rider__stats { display: flex; gap: 18px; font: 500 11px var(--mono); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.rider__stats { display: flex; flex-wrap: wrap; gap: 14px 18px; font: 500 11px var(--mono); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
 .rider__stats b { display: block; font: 700 18px var(--cond); color: var(--bone); letter-spacing: .04em; }
 .rider .link-arrow { margin-top: 16px; font-size: 13px; }
 
@@ -566,8 +568,10 @@ body.soon { display: grid; place-items: center; min-height: 100vh; min-height: 1
 body.soon::after { content: ''; position: fixed; right: -12%; bottom: -10%; width: 60%; height: 80%; z-index: -1; pointer-events: none;
   background: repeating-linear-gradient(115deg, transparent 0 34px, color-mix(in srgb, var(--hot) 8%, transparent) 34px 40px); clip-path: polygon(30% 0, 100% 0, 100% 100%, 0 100%); }
 .soon__wrap { position: relative; width: min(620px, 100%); text-align: center; display: grid; justify-items: center; gap: 18px; }
-.soon__ghost { width: 64px; height: auto; }
-.soon__word { width: min(320px, 70%); height: auto; margin-top: -4px; }
+.soon__ghost { width: 60px; height: auto; margin-bottom: -6px; }
+.soon__word { width: min(340px, 78%); aspect-ratio: 900 / 480; background: var(--bone);
+  -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat;
+  -webkit-mask-position: center; mask-position: center; margin: 0 0 -14px; }
 .soon__wrap .display { font-size: clamp(52px, 11vw, 104px); margin: 0; }
 .soon__wrap p { margin: 0; color: var(--muted); max-width: 46ch; font-size: 17px; line-height: 1.6; }
 .soon__form { display: flex; gap: 10px; width: min(440px, 100%); flex-wrap: wrap; }
@@ -577,6 +581,22 @@ body.soon::after { content: ''; position: fixed; right: -12%; bottom: -10%; widt
 .soon__thanks { font: 500 13px var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--hot); }
 .soon__stamp { margin-top: 10px; }
 @media (max-width: 540px) { .soon__form .btn { width: 100%; } }
+
+/* ---------- big screens ----------
+   The layout is capped at --max so lines of text stay readable. On very wide monitors the cap
+   is loosened a little, the gutters open up and the grids show another column, so the page
+   fills the screen instead of sitting in a narrow strip. */
+@media (min-width: 1700px) {
+  :root { --max: 1640px; --gutter: clamp(48px, 5vw, 96px); }
+  .marquee__track span { font-size: 36px; }
+  .rail { grid-auto-columns: calc((100% - 56px) / 5); }
+}
+@media (min-width: 2200px) {
+  :root { --max: 1900px; }
+  body { font-size: 17px; }
+  .products { grid-template-columns: repeat(5, 1fr); }
+  .rail { grid-auto-columns: calc((100% - 70px) / 6); }
+}
 
 /* ---------- responsive ---------- */
 @media (max-width: 1180px) {

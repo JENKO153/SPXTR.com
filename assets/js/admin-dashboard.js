@@ -1353,7 +1353,25 @@ if (window.top !== window.self) { document.documentElement.innerHTML = ''; throw
   function contentEditor() {
     setTitle('Team & crew');
     const s = clone(DATA.settings);
-    const team = s.team.map(r => withPhoto(r));
+    // Riders come in with up to three stats of their own ("Podiums 14", "Comps 21", "Best trick…").
+    // They're edited as flat fields here and folded back into a list when saved.
+    const teamStats = r => {
+      const list = (r.stats || []).filter(x => x && (x.label || x.value));
+      if (!list.length && (r.statLabel || r.statValue)) list.push({ label: r.statLabel, value: r.statValue });
+      return list.slice(0, 3);
+    };
+    const team = s.team.map(r => {
+      const st = teamStats(r);
+      return withPhoto({ ...r, s1l: st[0]?.label || '', s1v: st[0]?.value || '',
+                              s2l: st[1]?.label || '', s2v: st[1]?.value || '',
+                              s3l: st[2]?.label || '', s3v: st[2]?.value || '' });
+    });
+    const foldStats = r => {
+      const { s1l, s1v, s2l, s2v, s3l, s3v, statLabel, statValue, ...rest } = r;
+      return { ...rest, stats: [[s1l, s1v], [s2l, s2v], [s3l, s3v]]
+        .map(([label, value]) => ({ label: (label || '').trim(), value: (value || '').trim() }))
+        .filter(x => x.label || x.value) };
+    };
     const reports = s.reports.map(r => ({ ...r }));
     const ig = s.ig.map(x => withPhoto(x));
 
@@ -1411,7 +1429,7 @@ if (window.top !== window.self) { document.documentElement.innerHTML = ''; throw
     const draft = () => ({
       settings: {
         ...s,
-        team: team.map(r => ({ ...r, image: r.ph ? photoDraft(r.ph) : '' })),
+        team: team.map(r => foldStats({ ...r, image: r.ph ? photoDraft(r.ph) : '' })),
         reports,
         ig: ig.map(x => ({ ...x, image: x.ph ? photoDraft(x.ph) : '' })),
       },
@@ -1431,7 +1449,7 @@ if (window.top !== window.self) { document.documentElement.innerHTML = ''; throw
 
     listSection({
       host: $('#teamList'), list: team, max: 12, onChange: markDirty,
-      blank: { name: '', number: '', discipline: '', home: '', statLabel: 'Wins', statValue: '', product: '', ph: null },
+      blank: { name: '', number: '', discipline: '', home: '', s1l: '', s1v: '', s2l: '', s2v: '', s3l: '', s3v: '', product: '', instagram: '', ph: null },
       label: (r, i) => r.name || `Rider ${i + 1}`,
       row: r => `
         <div class="field-row">
@@ -1439,11 +1457,22 @@ if (window.top !== window.self) { document.documentElement.innerHTML = ''; throw
           <label>Number<input name="number" maxlength="6" value="${esc(r.number)}" placeholder="351"></label>
           <label>Discipline<input name="discipline" maxlength="30" value="${esc(r.discipline)}" placeholder="Motocross"></label>
         </div>
+        <label>Home<input name="home" maxlength="40" value="${esc(r.home)}" placeholder="Newcastle, NSW"></label>
+        <p class="hint" style="margin:0">Up to three stats, whatever suits their sport: Podiums, Comps, Best trick, Years riding, Summit… Leave a pair empty to skip it.</p>
         <div class="field-row">
-          <label>Home<input name="home" maxlength="40" value="${esc(r.home)}" placeholder="Newcastle, NSW"></label>
-          <label>Stat name<input name="statLabel" maxlength="20" value="${esc(r.statLabel)}" placeholder="Podiums"></label>
-          <label>Stat number<input name="statValue" maxlength="10" value="${esc(r.statValue)}" placeholder="14"></label>
+          <label>Stat 1 name<input name="s1l" maxlength="20" value="${esc(r.s1l || '')}" placeholder="Podiums"></label>
+          <label>Stat 1 value<input name="s1v" maxlength="14" value="${esc(r.s1v || '')}" placeholder="14"></label>
         </div>
+        <div class="field-row">
+          <label>Stat 2 name<input name="s2l" maxlength="20" value="${esc(r.s2l || '')}" placeholder="Comps"></label>
+          <label>Stat 2 value<input name="s2v" maxlength="14" value="${esc(r.s2v || '')}" placeholder="21"></label>
+        </div>
+        <div class="field-row">
+          <label>Stat 3 name<input name="s3l" maxlength="20" value="${esc(r.s3l || '')}" placeholder="Years riding"></label>
+          <label>Stat 3 value<input name="s3v" maxlength="14" value="${esc(r.s3v || '')}" placeholder="9"></label>
+        </div>
+        <label>Instagram <span class="hint">Optional. Handle or link. Nothing shows if it's empty</span>
+          <input name="instagram" maxlength="200" value="${esc(r.instagram || '')}" placeholder="@ridername"></label>
         <label>Rides in <span class="hint">Shows a link to that product</span>
           <select name="product"><option value="">No product</option>${DATA.products.map(p => `<option value="${esc(p.slug)}" ${p.slug === r.product ? 'selected' : ''}>${esc(p.name)}</option>`).join('')}</select>
         </label>`,
@@ -1476,7 +1505,7 @@ if (window.top !== window.self) { document.documentElement.innerHTML = ''; throw
       const ok = await withWrite('Enter your admin password to save the team and crew section.', async () => {
         const [savedTeam, savedIg] = [await savePhotos(team), await savePhotos(ig)];
         progress('Saving…');
-        const next = { ...s, team: savedTeam, reports, ig: savedIg };
+        const next = { ...s, team: savedTeam.map(foldStats), reports, ig: savedIg };
         await CMS.saveSettings(next);
         DATA.settings = CMS.mergeSettings(next);
         const after = [...oldPhotos(savedTeam), ...oldPhotos(savedIg)];

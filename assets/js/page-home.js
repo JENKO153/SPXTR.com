@@ -54,8 +54,8 @@ function renderHome() {
   bar.hidden = !promises.length;
 
   const words = (SITE.marquee || []).filter(Boolean);
-  // Printed twice so the ticker can scroll seamlessly.
-  $('#marquee').innerHTML = [...words, ...words].map(w => `<span>${esc(w)}</span>`).join('');
+  fillTicker($('#marquee'), words.map(w => `<span>${esc(w)}</span>`).join(''));
+  fillTicker.redraw = () => renderChrome() || renderHome();   // keep both tickers across the screen
 
   // Pages the admin has set up
   txt('#pages-eyebrow', SITE.pagesSection.eyebrow);
@@ -155,12 +155,14 @@ function renderTeam() {
   $('#team').hidden = !riders.length;
   $('#team-grid').innerHTML = riders.map(r => {
     const p = PRODUCTS.find(x => x.slug === r.product);
+    const ig = riderLink(r);
     return `<article class="rider">
       <div class="rider__img"><img src="${imgSrc(r.image)}" alt="${esc(r.name)}" loading="lazy">${r.number ? `<span class="rider__num">#${esc(r.number)}</span>` : ''}<span class="corners"></span></div>
       <div class="rider__body">
         <span class="eyebrow">${esc(r.discipline)}</span>
         <h3>${esc(r.name)}</h3>
-        <div class="rider__stats">${r.home ? `<div><b>${esc(r.home)}</b>Home</div>` : ''}${r.statValue ? `<div><b>${esc(r.statValue)}</b>${esc(r.statLabel)}</div>` : ''}</div>
+        <div class="rider__stats">${riderStats(r).map(x => `<div><b>${esc(x.value)}</b>${esc(x.label)}</div>`).join('')}</div>
+        ${ig ? `<a class="rider__ig" href="${esc(ig)}" target="_blank" rel="noopener noreferrer">${ICON.instagram} ${esc(riderHandle(r))}</a>` : ''}
         ${p ? `<a class="link-arrow" href="${productUrl(p)}">Rides in: ${esc(p.name)} ${ICON.arrow}</a>` : ''}
       </div>
     </article>`;
@@ -169,6 +171,27 @@ function renderTeam() {
 
 // The countdown block is either an event (date, gates time, venue) or a product drop (just a timer).
 // Venue is optional for both: leave it blank and it simply isn't shown.
+// Home plus whatever stats suit their sport. Older riders saved with a single stat still work.
+function riderStats(r) {
+  const stats = (r.stats || []).filter(x => x && (x.label || x.value));
+  if (!stats.length && (r.statLabel || r.statValue)) stats.push({ label: r.statLabel, value: r.statValue });
+  return [...(r.home ? [{ label: 'Home', value: r.home }] : []), ...stats].slice(0, 4);
+}
+
+// A rider's own Instagram. Nothing is shown when they haven't got one.
+function riderLink(r) {
+  const v = String(r.instagram || '').trim();
+  if (!v) return '';
+  if (/^https:\/\/(www\.)?instagram\.com\//i.test(v)) return v;
+  const handle = v.replace(/^@/, '');
+  return /^[A-Za-z0-9._]{1,30}$/.test(handle) ? `https://www.instagram.com/${handle}/` : '';
+}
+const riderHandle = r => {
+  const v = String(r.instagram || '').trim();
+  const m = v.match(/instagram\.com\/([A-Za-z0-9._]+)/i);
+  return '@' + (m ? m[1] : v.replace(/^@/, '')).replace(/\/$/, '');
+};
+
 function renderEvent() {
   const ev = SITE.event, drop = ev.kind === 'drop';
   $('#event').hidden = !ev.show;

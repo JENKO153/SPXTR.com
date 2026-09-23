@@ -14,6 +14,8 @@ const STORE = Object.freeze({
   email: 'admin@spectercltv.com',
   // Client's brand artwork (white on black; the site blends/masks the black away).
   brand: { wordmark: 'assets/brand/spxtr-wordmark.jpg', ghost: 'assets/brand/spxtr-ghost.jpg',
+           // see-through versions, for pages that put the logo straight onto the background
+           ghostClear: 'assets/brand/ghost-white-192.png',
            // transparent version of the wordmark, used as the stencil for the giant footer logo
            wordmarkMask: 'assets/brand/spxtr-wordmark-mask.png' },
   badges: ['New', 'Bestseller', 'Limited', 'Low stock', 'Sale'],
