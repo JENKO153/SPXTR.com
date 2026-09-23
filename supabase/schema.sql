@@ -40,6 +40,13 @@ alter table public.security_settings add column if not exists coming_soon boolea
 alter table public.security_settings add column if not exists preview_key text not null default replace(gen_random_uuid()::text, '-', '');
 insert into public.security_settings (id) values (1) on conflict (id) do nothing;
 
+-- Is the store closed to the public right now? Used by the read rules below.
+create or replace function public.coming_soon() returns boolean
+language sql stable security definer set search_path = public as $$
+  select coalesce((select coming_soon from public.security_settings where id = 1), false);
+$$;
+grant execute on function public.coming_soon() to anon, authenticated;
+
 -- One active write window per admin, tied to the session that confirmed the password.
 create table if not exists public.admin_write_grants (
   user_id uuid primary key references auth.users(id) on delete cascade,
@@ -145,12 +152,6 @@ language sql stable security definer set search_path = public as $$
   );
 $$;
 
--- Is the store closed to the public right now? Used by the read rules below.
-create or replace function public.coming_soon() returns boolean
-language sql stable security definer set search_path = public as $$
-  select coalesce((select coming_soon from public.security_settings where id = 1), false);
-$$;
-grant execute on function public.coming_soon() to anon, authenticated;
 
 -- Turn coming soon on/off, and make a fresh preview link. Both need a confirmed password.
 create or replace function public.set_coming_soon(on_off boolean) returns boolean
