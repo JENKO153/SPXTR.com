@@ -57,3 +57,8 @@ export const shippingEmail = (site: string, o: Order, items: Item[]) => T.shippi
 export const shopNotificationEmail = (site: string, o: Order, items: Item[]) => T.shopNotificationEmail(ctx(site, o, items));
 export const reviewAlertEmail = (site: string, review: Record<string, unknown>, productName: string) =>
   T.reviewAlertEmail({ site, review, productName, accent: brand.accent, instagram: brand.instagram });
+
+export const launchWelcomeEmail = (site: string, unsubUrl: string) =>
+  T.launchWelcomeEmail({ site, unsubUrl, accent: brand.accent, instagram: brand.instagram });
+export const launchLiveEmail = (site: string, unsubUrl: string, headline?: string, message?: string) =>
+  T.launchLiveEmail({ site, unsubUrl, headline, message, accent: brand.accent, instagram: brand.instagram });

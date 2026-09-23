@@ -18,8 +18,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Stencil+Display:wght@800;900&family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="../../assets/css/admin.css?v=202609232307">
-  <script src="../../assets/js/accent.js?v=202609232307"></script>
+  <link rel="stylesheet" href="../../assets/css/admin.css?v=202609232316">
+  <script src="../../assets/js/accent.js?v=202609232316"></script>
 </head>
 <body class="dash" hidden>
   <aside class="side" id="side">
@@ -42,7 +42,8 @@
       <a href="../../" id="viewStore" target="_blank" rel="noopener"><svg viewBox="0 0 24 24"><path d="M14 4h6v6M20 4l-9 9M18 14v6H4V6h6"/></svg>View store</a>
     </nav>
     <div class="side__foot">
-      <div class="side__user"><span id="userEmail"></span><small id="modeLabel"></small></div>
+      <button type="button" class="side__user" id="profileBtn" title="Your name and account">
+        <span id="userEmail"></span><small id="modeLabel"></small></button>
       <button class="btn btn--ghost btn--sm" id="logout">Log out</button>
     </div>
   </aside>
@@ -57,6 +58,23 @@
       <span class="chip" id="lockChip" title="Every change asks for your password"><svg viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="1"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>Changes need password</span>
     </header>
     <div class="content" id="view"></div>
+  </div>
+
+  <!-- Your account: the name shown in the activity log -->
+  <div class="modal" id="profileModal" hidden>
+    <form class="modal__card" id="profileForm">
+      <h2>Your account</h2>
+      <p class="muted">Signed in as <b id="profileEmail"></b></p>
+      <label class="stack" style="display:grid;gap:8px;text-align:left">Name in the activity log
+        <input type="text" id="nickname" maxlength="40" autocomplete="nickname" placeholder="e.g. Blake">
+        <span class="hint">Leave it empty to go back to showing your email.</span>
+      </label>
+      <div class="notice notice--error" id="profileError" hidden></div>
+      <div class="modal__actions">
+        <button type="button" class="btn btn--ghost" id="profileCancel">Cancel</button>
+        <button type="submit" class="btn">Save name</button>
+      </div>
+    </form>
   </div>
 
   <!-- Password confirmation (every change) -->
@@ -80,10 +98,10 @@
 
   <div class="toast" id="toast" role="status"></div>
 
-  <script src="../../assets/js/config.js?v=202609232307"></script>
-  <script src="../../assets/vendor/supabase-2.116.0.js?v=202609232307"></script>
-  <script src="../../assets/js/data.js?v=202609232307"></script>
-  <script src="../../assets/js/cms.js?v=202609232307"></script>
-  <script src="../../assets/js/admin-dashboard.js?v=202609232307"></script>
+  <script src="../../assets/js/config.js?v=202609232316"></script>
+  <script src="../../assets/vendor/supabase-2.116.0.js?v=202609232316"></script>
+  <script src="../../assets/js/data.js?v=202609232316"></script>
+  <script src="../../assets/js/cms.js?v=202609232316"></script>
+  <script src="../../assets/js/admin-dashboard.js?v=202609232316"></script>
 </body>
 </html>

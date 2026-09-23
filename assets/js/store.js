@@ -71,10 +71,25 @@ function showComingSoon() {
       <span class="soon__stamp stamp">Rider tested</span>
     </main>`;
   wireBrandFallbacks();
-  $('#soon-notify')?.addEventListener('submit', e => {
-    e.preventDefault(); e.target.reset();
-    const t = document.createElement('div'); t.className = 'soon__thanks'; t.textContent = "You're on the list. See you at launch.";
-    e.target.replaceWith(t);
+  // "Notify me": saved to the launch list, with a short email back saying they're on it.
+  $('#soon-notify')?.addEventListener('submit', async e => {
+    e.preventDefault();
+    const form = e.target, input = form.querySelector('input'), btn = form.querySelector('button');
+    const email = input.value.trim();
+    if (!email) return;
+    btn.disabled = true; btn.textContent = 'Adding…';
+    try {
+      const r = await CMS.joinLaunchList(email);
+      const done = document.createElement('div');
+      done.className = 'soon__thanks';
+      done.textContent = r?.already ? "You're already on the list. See you at launch." : "You're on the list. Check your inbox.";
+      form.replaceWith(done);
+    } catch (err) {
+      let bad = $('.soon__bad');
+      if (!bad) { bad = document.createElement('p'); bad.className = 'soon__bad'; form.after(bad); }
+      bad.textContent = err.message;
+      btn.disabled = false; btn.textContent = 'Notify me';
+    }
   });
   document.documentElement.classList.remove('is-loading');
 }

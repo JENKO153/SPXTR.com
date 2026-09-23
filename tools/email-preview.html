@@ -34,6 +34,9 @@
       <button class="on" data-t="confirmationEmail">Order confirmed</button>
       <button data-t="shippingEmail">Shipped</button>
       <button data-t="shopNotificationEmail">New order (to you)</button>
+      <button data-t="reviewAlertEmail">New review (to you)</button>
+      <button data-t="launchWelcomeEmail">On the launch list</button>
+      <button data-t="launchLiveEmail">We're live</button>
     </div>
     <div class="seg" id="width">
       <button class="on" data-w="680">Desktop</button>
@@ -87,7 +90,14 @@
     const state = { t: 'confirmationEmail', c: 'aud' };
     function render() {
       const { order, items } = sample(state.c);
-      const m = T[state.t]({ site, accent: document.getElementById('accent').value.toUpperCase(), order, items, supportEmail: 'admin@spectercltv.com', instagram: '@spxtr' });
+      const m = T[state.t]({
+        site, accent: document.getElementById('accent').value.toUpperCase(), order, items,
+        supportEmail: 'admin@spectercltv.com', instagram: '@spxtr',
+        // for the review alert and the launch-list emails
+        review: { rating: 5, name: 'Jordan R.', body: 'Wore it all winter and it still looks new.', verified: true, photos: ['x'] },
+        productName: 'Ghost Eye Hoodie',
+        unsubUrl: site + '/unsubscribe', headline: '', message: 'First 50 orders get a sticker pack.',
+      });
       document.getElementById('frame').srcdoc = m.html;
       document.getElementById('subject').textContent = m.subject;
       document.getElementById('text').textContent = m.text;

@@ -43,11 +43,12 @@ if (window.top !== window.self) { document.documentElement.innerHTML = ''; throw
     try { admin = await CMS.getAdmin(); } catch (e) { console.error(e); }
     if (!admin || admin.needs) { location.replace('../login/'); return; }
     document.body.hidden = false;
-    $('#userEmail').textContent = admin.email;
+    showWhoAmI(admin);
     $('#modeLabel').textContent = CMS.mode === 'demo' ? 'Demo admin' : admin.mfa ? 'Owner // 2FA on' : 'Owner';
     $('#demoChip').hidden = CMS.mode !== 'demo';
     $('#stripeLink').href = stripeUrl('payments');
     ADMIN = admin;
+    NAMES = await CMS.adminNames?.().catch(() => ({})) || {};
     comingSoonBanner();
     await reload();
     window.addEventListener('hashchange', onHash);
@@ -97,6 +98,35 @@ if (window.top !== window.self) { document.documentElement.innerHTML = ''; throw
     const n = DATA.orders.filter(o => o.status === 'paid').length;
     $('#toShip').textContent = n; $('#toShip').hidden = !n;
   }
+
+  // The name in the sidebar, and what the activity log calls this admin.
+  function showWhoAmI(admin) {
+    $('#userEmail').textContent = admin.nickname || admin.email;
+    $('#modeLabel').textContent = CMS.mode === 'demo' ? 'Demo admin' : admin.mfa ? 'Owner // 2FA on' : 'Owner';
+  }
+  $('#profileBtn').addEventListener('click', () => {
+    $('#profileEmail').textContent = ADMIN.email;
+    $('#nickname').value = ADMIN.nickname || '';
+    $('#profileError').hidden = true;
+    $('#profileModal').hidden = false;
+    $('#nickname').focus();
+  });
+  $('#profileCancel').addEventListener('click', () => { $('#profileModal').hidden = true; });
+  $('#profileModal').addEventListener('click', e => { if (e.target === $('#profileModal')) $('#profileModal').hidden = true; });
+  $('#profileForm').addEventListener('submit', async e => {
+    e.preventDefault();
+    const wanted = $('#nickname').value.trim().slice(0, 40);
+    if (wanted === (ADMIN.nickname || '')) { $('#profileModal').hidden = true; return; }
+    $('#profileModal').hidden = true;
+    const ok = await withWrite('Enter your admin password to change the name on your account.', async () => {
+      ADMIN.nickname = await CMS.setNickname(wanted);
+    });
+    if (!ok) return;
+    showWhoAmI(ADMIN);
+    NAMES = await CMS.adminNames().catch(() => NAMES);
+    toast(ADMIN.nickname ? `You'll show up as ${ADMIN.nickname}` : 'Back to showing your email');
+    if ((location.hash.slice(1) || 'overview').split('/')[0] === 'security') security(); else if (!location.hash || location.hash === '#overview') overview();
+  });
 
   $('#logout').addEventListener('click', async () => {
     if (dirty && !confirm('You have unsaved changes. Log out anyway?')) return;
@@ -258,9 +288,12 @@ if (window.top !== window.self) { document.documentElement.innerHTML = ''; throw
     return items.length ? `<ul class="checklist">${items.slice(0, 8).map(i => `<li class="todo">${i}</li>`).join('')}</ul>` : '<p class="muted" style="margin:0">All good. Nothing needs attention.</p>';
   }
 
+  let NAMES = {};      // email -> nickname, for entries written before a name was set
+  const who = a => NAMES[String(a.email || '').toLowerCase()] || a.email || 'Admin';
   const ACTION = { insert: 'created', update: 'updated', delete: 'deleted' };
-  const ENTITY = { products: 'product', collections: 'page', site_settings: 'homepage & settings', orders: 'order', reviews: 'review' };
-  const activityItem = a => `<li><time>${fmtDate(a.at)}</time><span>${esc(a.email || 'Admin')} ${ACTION[a.action] || esc(a.action)} ${ENTITY[a.entity] || esc(a.entity)}${a.summary && a.entity !== 'site_settings' ? ` <b>${esc(a.summary)}</b>` : ''}</span></li>`;
+  const ENTITY = { products: 'product', collections: 'page', site_settings: 'homepage & settings', orders: 'order', reviews: 'review',
+                   security_settings: 'store settings', admins: 'account' };
+  const activityItem = a => `<li><time>${fmtDate(a.at)}</time><span>${esc(who(a))} ${ACTION[a.action] || esc(a.action)} ${ENTITY[a.entity] || esc(a.entity)}${a.summary && a.entity !== 'site_settings' ? ` <b>${esc(a.summary)}</b>` : ''}</span></li>`;
 
   /* =====================================================================
      REVIEWS
@@ -1555,6 +1588,15 @@ if (window.top !== window.self) { document.documentElement.innerHTML = ''; throw
             <span id="testResult" class="hint"></span>
             <button type="button" class="btn btn--ghost btn--sm" id="newPreview">Make a new preview link</button>
             <p class="hint" style="margin:8px 0 0">A new link stops the old one working.</p>
+            <div class="launch" id="launchBox">
+              <h4>Launch list</h4>
+              <p class="hint" id="launchCount">Loading…</p>
+              <div class="launch__list" id="launchList"></div>
+              <div class="launch__send">
+                <button type="button" class="btn btn--sm" id="sendLaunch">Email everyone we're live</button>
+                <span class="hint">Sends one email to everyone who hasn't been told yet, with an unsubscribe link.</span>
+              </div>
+            </div>
           </div>
           <div class="section">
             <h3>Announcement bar <small>One message per line, up to 8</small></h3>
@@ -1705,6 +1747,46 @@ if (window.top !== window.self) { document.documentElement.innerHTML = ''; throw
       el.select(); el.setSelectionRange(0, el.value.length);
       navigator.clipboard?.writeText(el.value).then(() => toast('Preview link copied'), () => toast('Press Cmd+C to copy', true));
     });
+    // Launch list: who asked to be told when the store opens.
+    let launch = [];
+    const drawLaunch = () => {
+      const waiting = launch.filter(x => !x.notified_at).length;
+      $('#launchCount').textContent = launch.length
+        ? `${launch.length} ${launch.length === 1 ? 'person has' : 'people have'} asked to be told — ${waiting} still waiting to hear from you`
+        : 'Nobody has signed up yet. The box on the coming soon page adds them here.';
+      $('#launchList').innerHTML = launch.slice(0, 50).map(x => `
+        <div class="launch__row"><span>${esc(x.email)}</span>
+          <small>${x.notified_at ? 'told ' + fmtDate(x.notified_at) : fmtDate(x.at)}</small>
+          <button type="button" data-drop="${esc(x.email)}" aria-label="Remove ${esc(x.email)}">✕</button></div>`).join('')
+        + (launch.length > 50 ? `<p class="hint">…and ${launch.length - 50} more</p>` : '');
+      $('#sendLaunch').disabled = !waiting;
+      $('#sendLaunch').textContent = waiting ? `Email ${waiting} ${waiting === 1 ? 'person' : 'people'} we're live` : 'Everyone has been told';
+    };
+    CMS.launchList().then(l => { launch = l; drawLaunch(); }).catch(() => { $('#launchCount').textContent = 'The launch list is unavailable. Re-run schema.sql if you haven\'t yet.'; });
+    $('#launchList').addEventListener('click', async e => {
+      const b = e.target.closest('[data-drop]'); if (!b) return;
+      const email = b.dataset.drop;
+      if (!confirm(`Take ${email} off the launch list?`)) return;
+      const ok = await withWrite(`Enter your admin password to remove ${email} from the launch list.`, () => CMS.launchRemove(email));
+      if (!ok) return;
+      launch = launch.filter(x => x.email !== email); drawLaunch(); toast('Removed');
+    });
+    $('#sendLaunch').addEventListener('click', async () => {
+      const waiting = launch.filter(x => !x.notified_at).length;
+      if (!waiting) return;
+      if (ADMIN.comingSoon && !confirm('The store is still closed to the public. Send anyway?')) return;
+      if (!confirm(`Email ${waiting} ${waiting === 1 ? 'person' : 'people'} to say the store is live? This can't be taken back.`)) return;
+      const btn = $('#sendLaunch');
+      btn.disabled = true; btn.textContent = 'Sending…';
+      const ok = await withWrite('Enter your admin password to email the launch list.', async () => {
+        const r = await CMS.sendLaunchEmail();
+        launch = await CMS.launchList();
+        toast(r.failed ? `Sent ${r.sent}, ${r.failed} failed. Check the Resend logs.` : `Sent to ${r.sent} ${r.sent === 1 ? 'person' : 'people'}`);
+      });
+      drawLaunch();
+      if (!ok) btn.disabled = false;
+    });
+
     $('#testPreview').addEventListener('click', async () => {
       const out = $('#testResult');
       out.textContent = 'Checking…'; out.style.color = '';
@@ -1904,6 +1986,7 @@ if (window.top !== window.self) { document.documentElement.innerHTML = ''; throw
       <div class="grid-2" style="margin-bottom:18px">
         <div class="panel"><div class="panel__head"><h2>Your account</h2></div><div class="panel__body stack">
           <div><span class="hint">Signed in as</span><div style="color:var(--bone)">${esc(ADMIN.email)}</div></div>
+          <div><span class="hint">Name in the activity log</span><div style="color:var(--bone)">${ADMIN.nickname ? esc(ADMIN.nickname) : '<span class="muted">Your email. Click your name at the bottom of the menu to change it.</span>'}</div></div>
           <div><span class="hint">Two-factor authentication</span><div>${demo ? '<span class="pill pill--off">Available once connected to Supabase</span>' : ADMIN.mfa ? '<span class="pill pill--live">On // authenticator app</span>' : '<span class="pill pill--red">Off</span>'}</div></div>
           <div><button class="btn btn--ghost" id="signOutAll">Sign out on every device</button><p class="hint" style="margin:8px 0 0">Use this if you logged in on a shared computer or think someone else has your password. Then change your password.</p></div>
         </div></div>
@@ -1938,7 +2021,7 @@ if (window.top !== window.self) { document.documentElement.innerHTML = ''; throw
     });
     try {
       const log = await CMS.auditLog();
-      $('#log').innerHTML = log.map(a => `<tr style="cursor:default"><td>${fmtDate(a.at)}</td><td>${esc(a.email || '—')}</td><td>${ACTION[a.action] || esc(a.action)} ${ENTITY[a.entity] || esc(a.entity)}</td><td>${esc(a.summary || '')}</td></tr>`).join('')
+      $('#log').innerHTML = log.map(a => `<tr style="cursor:default"><td>${fmtDate(a.at)}</td><td>${esc(who(a))}</td><td>${ACTION[a.action] || esc(a.action)} ${ENTITY[a.entity] || esc(a.entity)}</td><td>${esc(a.summary || '')}</td></tr>`).join('')
         || '<tr><td colspan="4"><div class="empty">No changes yet.</div></td></tr>';
     } catch { $('#log').innerHTML = '<tr><td colspan="4" class="muted">Activity is unavailable.</td></tr>'; }
   }

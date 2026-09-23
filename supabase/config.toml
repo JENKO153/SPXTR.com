@@ -21,3 +21,6 @@ verify_jwt = false
 # The public review form; spam-checked inside the function.
 [functions.submit-review]
 verify_jwt = false
+
+[functions.launch-list]
+verify_jwt = false

@@ -27,6 +27,9 @@ create table if not exists public.admins (
   email text not null,
   created_at timestamptz not null default now()
 );
+-- What this admin is called in the activity log ("Blake", "Zac"). Falls back to the email.
+alter table public.admins add column if not exists nickname text
+  check (nickname is null or char_length(btrim(nickname)) between 1 and 40);
 
 create table if not exists public.security_settings (
   id int primary key default 1 check (id = 1),
@@ -39,6 +42,7 @@ create table if not exists public.security_settings (
 alter table public.security_settings add column if not exists coming_soon boolean not null default false;
 alter table public.security_settings add column if not exists preview_key text not null default replace(gen_random_uuid()::text, '-', '');
 insert into public.security_settings (id) values (1) on conflict (id) do nothing;
+
 
 -- Is the store closed to the public right now? Used by the read rules below.
 create or replace function public.coming_soon() returns boolean
@@ -140,6 +144,42 @@ language sql volatile security definer set search_path = public as $$
   delete from public.admin_write_grants where user_id = auth.uid();
 $$;
 
+-- The name to put in the activity log for whoever is signed in.
+create or replace function public.actor_name() returns text
+language sql stable security definer set search_path = public as $$
+  select coalesce(nullif(btrim((select nickname from public.admins where user_id = auth.uid())), ''),
+                  auth.jwt() ->> 'email');
+$$;
+grant execute on function public.actor_name() to authenticated;
+
+-- Set (or clear) your own nickname. Needs a confirmed password, like every other change,
+-- so nobody can quietly rename themselves in the log.
+create or replace function public.set_nickname(name text) returns text
+language plpgsql volatile security definer set search_path = public as $$
+declare clean text := nullif(btrim(coalesce(name, '')), '');
+begin
+  if not public.can_write() then raise exception 'Not allowed. Confirm your password and try again.'; end if;
+  if clean is not null and char_length(clean) > 40 then clean := left(clean, 40); end if;
+  update public.admins set nickname = clean where user_id = auth.uid();
+  if not found then raise exception 'Not an admin account.'; end if;
+  insert into public.audit_log (user_id, email, action, entity, entity_id, summary)
+  values (auth.uid(), coalesce(clean, auth.jwt() ->> 'email'), 'update', 'admins', auth.uid()::text,
+          case when clean is null then 'Nickname cleared' else 'Nickname set to ' || clean end);
+  return clean;
+end $$;
+revoke all on function public.set_nickname(text) from public, anon;
+grant execute on function public.set_nickname(text) to authenticated;
+
+-- Everyone's nickname, so the activity log can show names on older entries too. Admins only.
+create or replace function public.admin_names() returns jsonb
+language sql stable security definer set search_path = public as $$
+  select case when public.is_admin()
+    then coalesce((select jsonb_object_agg(lower(email), nickname) from public.admins where nickname is not null), '{}'::jsonb)
+    else '{}'::jsonb end;
+$$;
+revoke all on function public.admin_names() from public, anon;
+grant execute on function public.admin_names() to authenticated;
+
 -- Lets the login screen check whether an account is an admin and whether MFA is required.
 create or replace function public.admin_status() returns jsonb
 language sql stable security definer set search_path = public as $$
@@ -148,6 +188,7 @@ language sql stable security definer set search_path = public as $$
     'require_mfa', coalesce((select require_mfa from public.security_settings where id = 1), true),
     'aal', coalesce(auth.jwt() ->> 'aal', 'aal1'),
     'coming_soon', public.coming_soon(),
+    'nickname', (select nickname from public.admins where user_id = auth.uid()),
     'preview_key', (select preview_key from public.security_settings where id = 1 and public.is_admin())
   );
 $$;
@@ -160,7 +201,7 @@ begin
   if not public.can_write() then raise exception 'Not allowed. Confirm your password and try again.'; end if;
   update public.security_settings set coming_soon = on_off where id = 1;
   insert into public.audit_log (user_id, email, action, entity, entity_id, summary)
-  values (auth.uid(), coalesce(auth.jwt() ->> 'email', 'Admin'), 'update', 'security_settings', '1',
+  values (auth.uid(), coalesce(public.actor_name(), 'Admin'), 'update', 'security_settings', '1',
           case when on_off then 'Coming soon: on' else 'Coming soon: off' end);
   return on_off;
 end $$;
@@ -173,7 +214,7 @@ begin
   k := replace(gen_random_uuid()::text, '-', '');
   update public.security_settings set preview_key = k where id = 1;
   insert into public.audit_log (user_id, email, action, entity, entity_id, summary)
-  values (auth.uid(), coalesce(auth.jwt() ->> 'email', 'Admin'), 'update', 'security_settings', '1', 'New preview link');
+  values (auth.uid(), coalesce(public.actor_name(), 'Admin'), 'update', 'security_settings', '1', 'New preview link');
   return k;
 end $$;
 
@@ -298,7 +339,7 @@ begin
     return null;
   end if;
   insert into public.audit_log (user_id, email, action, entity, entity_id, summary)
-  values (auth.uid(), coalesce(auth.jwt() ->> 'email', actor), lower(tg_op), tg_table_name, rec ->> 'id',
+  values (auth.uid(), coalesce(public.actor_name(), actor), lower(tg_op), tg_table_name, rec ->> 'id',
           case when tg_table_name = 'orders' then 'SPX-' || (rec ->> 'number')
                else left(coalesce(rec ->> 'name', rec ->> 'slug', ''), 200) end);
   return null;
@@ -771,6 +812,46 @@ begin
   );
 end $$;
 grant execute on function public.store_data(text) to anon, authenticated;
+
+-- ---------------------------------------------------------------------
+-- Launch list: people who asked to be told when the store opens.
+-- Only the Edge Functions (service key) and these functions touch it.
+-- ---------------------------------------------------------------------
+create table if not exists public.launch_signups (
+  id uuid primary key default gen_random_uuid(),
+  email text not null check (email ~ '^[^@[:space:]]+@[^@[:space:]]+\.[^@[:space:]]+$' and char_length(email) <= 200),
+  at timestamptz not null default now(),
+  ip_hash text,
+  notified_at timestamptz,
+  unsub_token text not null default replace(gen_random_uuid()::text, '-', '')
+);
+create unique index if not exists launch_signups_email_idx on public.launch_signups (lower(email));
+alter table public.launch_signups enable row level security;
+revoke all on public.launch_signups from anon, authenticated;
+
+-- What the admin sees: how many are waiting, and the list itself.
+create or replace function public.launch_list() returns jsonb
+language sql stable security definer set search_path = public as $$
+  select case when public.is_admin() then coalesce((
+    select jsonb_agg(jsonb_build_object('email', email, 'at', at, 'notified_at', notified_at) order by at desc)
+    from (select email, at, notified_at from public.launch_signups order by at desc limit 2000) x), '[]'::jsonb)
+  else '[]'::jsonb end;
+$$;
+revoke all on function public.launch_list() from public, anon;
+grant execute on function public.launch_list() to authenticated;
+
+-- Take someone off the list (a bounced address, or they asked in person).
+create or replace function public.launch_remove(addr text) returns boolean
+language plpgsql volatile security definer set search_path = public as $$
+begin
+  if not public.can_write() then raise exception 'Not allowed. Confirm your password and try again.'; end if;
+  delete from public.launch_signups where lower(email) = lower(btrim(addr));
+  insert into public.audit_log (user_id, email, action, entity, entity_id, summary)
+  values (auth.uid(), coalesce(public.actor_name(), 'Admin'), 'delete', 'launch_signups', null, 'Removed ' || addr || ' from the launch list');
+  return found;
+end $$;
+revoke all on function public.launch_remove(text) from public, anon;
+grant execute on function public.launch_remove(text) to authenticated;
 
 -- ---------------------------------------------------------------------
 -- Image storage: public to view, only a password-confirmed admin can upload/delete.

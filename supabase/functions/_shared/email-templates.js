@@ -301,3 +301,50 @@ export function reviewAlertEmail({ site, accent, review, productName, instagram 
     text: `New review to approve (${review.rating}/5) from ${review.name}${productName ? ` on ${productName}` : ''}:\n\n"${review.body}"\n\nApprove it: ${site}/admin/dashboard/#reviews`,
   };
 }
+
+// =====================================================================
+// 5. "You're on the list" (to the customer, while the store is closed)
+// =====================================================================
+export function launchWelcomeEmail({ site, accent, instagram, unsubUrl }) {
+  accent = readable(accent);
+  const body = `
+    <div style="margin:0 0 16px;padding:18px 20px;background:${C.panel};border-left:4px solid ${accent};font:400 15px/1.6 ${BODY};color:${C.bone}">
+      You'll get one email the moment the store opens. Nothing else, and you can leave the list any time.
+    </div>`;
+  return {
+    subject: 'You\'re on the list',
+    html: layout({
+      site, accent, instagram,
+      preheader: 'We\'ll email you the moment the store opens.',
+      eyebrowText: 'Launch list // you\'re in',
+      title: 'You\'re on<br>the list.',
+      intro: 'Thanks for putting your name down. We\'re building the store right now.',
+      body,
+      footerNote: unsubUrl ? `Changed your mind? <a href="${unsubUrl}" style="color:${C.muted}">Take me off the list</a>.` : '',
+    }),
+    text: `You're on the list. We'll email you the moment the SPXTR store opens.${unsubUrl ? `\n\nTake yourself off the list: ${unsubUrl}` : ''}`,
+  };
+}
+
+// =====================================================================
+// 6. "We're live" (to everyone on the launch list)
+// =====================================================================
+export function launchLiveEmail({ site, accent, instagram, unsubUrl, headline, message }) {
+  accent = readable(accent);
+  const body = `
+    ${message ? `<div style="margin:0 0 16px;padding:18px 20px;background:${C.panel};border-left:4px solid ${accent};font:400 15px/1.6 ${BODY};color:${C.bone}">${esc(message)}</div>` : ''}
+    <div style="margin:22px 0 4px">${button(`${site}/shop/`, 'Shop the drop', accent)}</div>`;
+  return {
+    subject: headline || 'The SPXTR store is open',
+    html: layout({
+      site, accent, instagram,
+      preheader: 'The store is open. Everything is live now.',
+      eyebrowText: 'Launch // we\'re live',
+      title: 'We\'re<br>live.',
+      intro: 'The store is open. You asked to be told first, so here it is.',
+      body,
+      footerNote: unsubUrl ? `<a href="${unsubUrl}" style="color:${C.muted}">Take me off the list</a>.` : '',
+    }),
+    text: `The SPXTR store is open: ${site}/shop/${message ? `\n\n${message}` : ''}${unsubUrl ? `\n\nTake yourself off the list: ${unsubUrl}` : ''}`,
+  };
+}

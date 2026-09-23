@@ -196,6 +196,18 @@
 
       // Sends only ids, sizes and quantities. The function looks up real prices and stock,
       // then returns the address of Stripe's hosted checkout page.
+      // "Tell me when you open": adds an address to the launch list and sends the welcome email.
+      async joinLaunchList(email) {
+        const res = await fetch(`${cfg.supabaseUrl}/functions/v1/launch-list`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', apikey: cfg.supabaseKey, Authorization: `Bearer ${cfg.supabaseKey}` },
+          body: JSON.stringify({ email, website: '' }),
+        }).catch(() => null);
+        const body = await res?.json().catch(() => null);
+        if (!res?.ok) throw new Error(body?.error || 'Couldn\'t add you just now. Please try again in a minute.');
+        return body || { ok: true };
+      },
+
       // Customer review from the product page or order page. Goes to the submit-review Edge Function,
       // which saves it as pending until an admin approves it.
       async submitReview(review) {
@@ -276,6 +288,7 @@
         if (step.status !== 'ok') return { needs: step.status };
         const { data: factors } = await sb.auth.mfa.listFactors();
         return { email: session.user.email, mfa: (factors?.totp || []).length > 0,
+                 nickname: step.raw?.nickname || '',
                  comingSoon: !!step.raw?.coming_soon, previewKey: step.raw?.preview_key || '' };
       },
       logout: (everywhere = false) => admin().auth.signOut({ scope: everywhere ? 'global' : 'local' }),
@@ -287,6 +300,41 @@
         return data;
       },
       endWrite: () => admin().rpc('end_write_grant'),
+
+      // What this admin is called in the activity log. Empty clears it back to the email.
+      async setNickname(name) {
+        const { data, error } = await admin().rpc('set_nickname', { name: name || null });
+        fail(error, 'Could not save your name');
+        return data || '';
+      },
+      // email -> nickname, so older log entries can show names too.
+      async adminNames() {
+        const { data, error } = await admin().rpc('admin_names');
+        return error ? {} : (data || {});
+      },
+
+      // The launch list, for the admin: who's waiting, remove someone, and the "we're live" email.
+      async launchList() {
+        const { data, error } = await admin().rpc('launch_list');
+        fail(error, 'Could not load the launch list');
+        return data || [];
+      },
+      async launchRemove(email) {
+        const { data, error } = await admin().rpc('launch_remove', { addr: email });
+        fail(error, 'Could not remove that address');
+        return data;
+      },
+      async sendLaunchEmail({ headline = '', message = '' } = {}) {
+        const { data: { session } } = await admin().auth.getSession();
+        const res = await fetch(`${cfg.supabaseUrl}/functions/v1/launch-list`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', apikey: cfg.supabaseKey, Authorization: `Bearer ${session?.access_token || cfg.supabaseKey}` },
+          body: JSON.stringify({ send: true, headline, message }),
+        }).catch(() => null);
+        const body = await res?.json().catch(() => null);
+        if (!res?.ok) throw new Error(body?.error || 'Could not send the launch email');
+        return body;
+      },
 
       // Coming soon: closes the store to everyone but the admins and the preview link.
       async setComingSoon(on) {
@@ -433,7 +481,7 @@
     });
     const log = (action, entity, rec) => {
       const list = read('audit', []);
-      list.unshift({ id: Date.now(), at: new Date().toISOString(), email: DEMO.email, action, entity, entity_id: rec?.id, summary: rec?.name || rec?.slug || '' });
+      list.unshift({ id: Date.now(), at: new Date().toISOString(), email: read('nickname', '') || DEMO.email, action, entity, entity_id: rec?.id, summary: rec?.name || rec?.slug || '' });
       write('audit', list.slice(0, 100));
     };
     const guard = () => { if (Date.now() > writeUntil) throw new Error('Not allowed. Confirm your password and try again.'); };
@@ -527,7 +575,31 @@
       },
       nextStep: async () => ({ status: session.get() ? 'ok' : 'not_admin' }),
       verifyMfa: async () => {}, startMfaEnroll: async () => ({}), finishMfaEnroll: async () => {},
-      getAdmin: async () => (session.get() ? { email: DEMO.email, mfa: false, demo: true,
+      async joinLaunchList(email) {
+        await new Promise(r => setTimeout(r, 300));
+        const list = read('launch', []);
+        if (list.some(x => x.email.toLowerCase() === email.toLowerCase())) return { ok: true, already: true };
+        list.unshift({ email, at: new Date().toISOString(), notified_at: null });
+        write('launch', list);
+        return { ok: true };
+      },
+      launchList: async () => read('launch', []),
+      async launchRemove(email) {
+        guard();
+        write('launch', read('launch', []).filter(x => x.email.toLowerCase() !== email.toLowerCase()));
+        log('delete', 'launch_signups', { name: `Removed ${email} from the launch list` });
+        return true;
+      },
+      async sendLaunchEmail() {
+        guard();
+        const list = read('launch', []);
+        const sent = list.filter(x => !x.notified_at).length;
+        write('launch', list.map(x => ({ ...x, notified_at: x.notified_at || new Date().toISOString() })));
+        return { ok: true, sent, failed: 0, demo: true };
+      },
+      setNickname: async name => { guard(); const v = String(name || '').trim().slice(0, 40); write('nickname', v); log('update', 'admins', { id: '1', name: v ? `Nickname set to ${v}` : 'Nickname cleared' }); return v; },
+      adminNames: async () => (read('nickname', '') ? { [DEMO.email]: read('nickname', '') } : {}),
+      getAdmin: async () => (session.get() ? { email: DEMO.email, mfa: false, demo: true, nickname: read('nickname', ''),
         comingSoon: read('comingSoon', false), previewKey: 'deadbeefcafe0123456789abcdef0000' } : null),
       async setComingSoon(on) { guard(); write('comingSoon', !!on); log('update', 'security_settings', { id: '1', name: on ? 'Coming soon: on' : 'Coming soon: off' }); return !!on; },
       async newPreviewKey() { guard(); return 'deadbeefcafe0123456789abcdef0000'; },
