@@ -125,6 +125,10 @@
     const fail = (error, fallback) => {
       if (!error) return;
       console.error(error);
+      // PGRST202: the database hasn't got this function yet, i.e. schema.sql needs re-running.
+      if (error.code === 'PGRST202') {
+        throw new Error('Your database is missing this feature. Open Supabase → SQL Editor, paste the latest supabase/schema.sql and press Run.');
+      }
       const denied = error.code === '42501' || /row-level security|permission denied/i.test(error.message || '');
       throw new Error(denied ? 'Not allowed. Confirm your password and try again.' : fallback || error.message);
     };
@@ -316,7 +320,7 @@
       // The launch list, for the admin: who's waiting, remove someone, and the "we're live" email.
       async launchList() {
         const { data, error } = await admin().rpc('launch_list');
-        fail(error, 'Could not load the launch list');
+        fail(error, 'Could not load the launch list');   // PGRST202 here means schema.sql needs re-running
         return data || [];
       },
       async launchRemove(email) {
