@@ -80,10 +80,16 @@ function showComingSoon() {
 }
 
 // Shown to whoever is looking around with the preview link while the store is closed.
+// "Leave preview" forgets the key, so this browser sees what the public sees.
 function previewBar() {
   if ($('.preview-bar')) return;
   document.body.insertAdjacentHTML('afterbegin',
-    '<div class="preview-bar">Preview // the store is still closed to the public</div>');
+    `<div class="preview-bar">Preview // the store is still closed to the public
+       <button type="button" id="leave-preview">Leave preview</button></div>`);
+  $('#leave-preview').addEventListener('click', () => {
+    CMS.forgetPreviewKey?.();
+    location.href = location.pathname;
+  });
 }
 
 const ICON = {

@@ -560,6 +560,7 @@ input, select { font: inherit; color: inherit; }
 }
 
 /* ---------- coming soon curtain ---------- */
+.preview-bar button { margin-left: 12px; font: inherit; text-decoration: underline; color: inherit; }
 .preview-bar { position: sticky; top: 0; z-index: 90; background: var(--hot); color: var(--ink); text-align: center; padding: 7px 12px; font: 600 11px/1.3 var(--mono); letter-spacing: .12em; text-transform: uppercase; }
 body.soon { display: grid; place-items: center; min-height: 100vh; min-height: 100svh; padding: 40px var(--gutter); background: var(--bg); }
 body.soon::after { content: ''; position: fixed; right: -12%; bottom: -10%; width: 60%; height: 80%; z-index: -1; pointer-events: none;
