@@ -1519,7 +1519,11 @@ if (window.top !== window.self) { document.documentElement.innerHTML = ''; throw
             <label class="toggle"><input type="checkbox" name="csEmail" ${s.comingSoon.showEmail !== false ? 'checked' : ''}>Show the "notify me" email box</label>
             <label>Preview link <span class="hint">Opens the real site while it's closed. Use the Copy button: selecting it by hand often misses the end.</span>
               <div class="prefix"><input id="previewLink" readonly value="${esc(previewUrl())}"><button type="button" class="btn btn--ghost btn--sm" id="copyPreview">Copy</button></div></label>
-            ${ADMIN.previewKey ? '' : '<p class="hint" style="color:var(--amber);margin:0 0 10px">No preview link yet. Press "Make a new preview link" below to create one.</p>'}
+            ${ADMIN.previewKey
+              ? `<p class="hint" style="margin:-4px 0 10px">Key: <code>${esc(ADMIN.previewKey)}</code></p>`
+              : '<p class="hint" style="color:var(--amber);margin:0 0 10px">This admin has no preview key. Press "Make a new preview link" below.</p>'}
+            <button type="button" class="btn btn--ghost btn--sm" id="testPreview">Test this link</button>
+            <span id="testResult" class="hint"></span>
             <button type="button" class="btn btn--ghost btn--sm" id="newPreview">Make a new preview link</button>
             <p class="hint" style="margin:8px 0 0">A new link stops the old one working.</p>
           </div>
@@ -1671,6 +1675,16 @@ if (window.top !== window.self) { document.documentElement.innerHTML = ''; throw
       if (!el.value) { toast('Make a preview link first', true); return; }
       el.select(); el.setSelectionRange(0, el.value.length);
       navigator.clipboard?.writeText(el.value).then(() => toast('Preview link copied'), () => toast('Press Cmd+C to copy', true));
+    });
+    $('#testPreview').addEventListener('click', async () => {
+      const out = $('#testResult');
+      out.textContent = 'Checking…'; out.style.color = '';
+      try {
+        const r = await CMS.testPreviewKey(ADMIN.previewKey);
+        if (!r.coming_soon) { out.textContent = 'The store is open to everyone right now, so no link is needed.'; return; }
+        out.textContent = r.ok ? 'Works: this link opens the real site.' : 'The database doesn\'t recognise this key. Press "Make a new preview link".';
+        out.style.color = r.ok ? 'var(--ok)' : 'var(--red)';
+      } catch (err) { out.textContent = err.message; out.style.color = 'var(--red)'; }
     });
     $('#newPreview').addEventListener('click', async () => {
       if (!confirm('Make a new preview link? The old one stops working straight away.')) return;

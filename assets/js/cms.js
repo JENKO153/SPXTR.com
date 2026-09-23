@@ -283,6 +283,12 @@
         fail(error, 'Could not change coming soon mode');
         return data;
       },
+      // Checks a preview key the way a visitor's browser would: through the public (logged-out) route.
+      async testPreviewKey(key) {
+        const { data, error } = await pub().rpc('store_data', { p_key: key || '' });
+        if (error) return { ok: false, why: error.message };
+        return { ok: !data?.coming_soon || Array.isArray(data?.products), coming_soon: !!data?.coming_soon };
+      },
       async newPreviewKey() {
         const { data, error } = await admin().rpc('new_preview_key');
         fail(error, 'Could not make a new preview link');
@@ -514,6 +520,7 @@
         comingSoon: read('comingSoon', false), previewKey: 'deadbeefcafe0123456789abcdef0000' } : null),
       async setComingSoon(on) { guard(); write('comingSoon', !!on); log('update', 'security_settings', { id: '1', name: on ? 'Coming soon: on' : 'Coming soon: off' }); return !!on; },
       async newPreviewKey() { guard(); return 'deadbeefcafe0123456789abcdef0000'; },
+      async testPreviewKey(key) { return { ok: key === 'deadbeefcafe0123456789abcdef0000', coming_soon: read('comingSoon', false) }; },
       logout: async () => session.clear(),
 
       async confirm(password) {
