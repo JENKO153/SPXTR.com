@@ -559,6 +559,22 @@ input, select { font: inherit; color: inherit; }
   .rv-gear__head .btn { width: 100%; }
 }
 
+/* ---------- coming soon curtain ---------- */
+body.soon { display: grid; place-items: center; min-height: 100vh; min-height: 100svh; padding: 40px var(--gutter); background: var(--bg); }
+body.soon::after { content: ''; position: fixed; right: -12%; bottom: -10%; width: 60%; height: 80%; z-index: -1; pointer-events: none;
+  background: repeating-linear-gradient(115deg, transparent 0 34px, color-mix(in srgb, var(--hot) 8%, transparent) 34px 40px); clip-path: polygon(30% 0, 100% 0, 100% 100%, 0 100%); }
+.soon__wrap { position: relative; width: min(620px, 100%); text-align: center; display: grid; justify-items: center; gap: 18px; }
+.soon__ghost { width: 64px; height: auto; }
+.soon__word { width: min(320px, 70%); height: auto; margin-top: -4px; }
+.soon__wrap .display { font-size: clamp(52px, 11vw, 104px); margin: 0; }
+.soon__wrap p { margin: 0; color: var(--muted); max-width: 46ch; font-size: 17px; line-height: 1.6; }
+.soon__form { display: flex; gap: 10px; width: min(440px, 100%); flex-wrap: wrap; }
+.soon__form input { flex: 1 1 220px; min-width: 0; height: 54px; padding: 0 16px; background: var(--surface); border: 1px solid var(--line-2); color: var(--bone); font: 400 16px var(--sans); }
+.soon__form input:focus { outline: none; border-color: var(--hot); }
+.soon__thanks { font: 500 13px var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--hot); }
+.soon__stamp { margin-top: 10px; }
+@media (max-width: 540px) { .soon__form .btn { width: 100%; } }
+
 /* ---------- responsive ---------- */
 @media (max-width: 1180px) {
   .nav { gap: 20px; font-size: 14px; }

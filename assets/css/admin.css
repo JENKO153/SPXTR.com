@@ -359,3 +359,11 @@ tbody tr:last-child td { border: 0; }
 .type-chip [data-rm]:hover { color: var(--red); }
 .types__add { display: flex; gap: 8px; max-width: 420px; }
 .types__add input { flex: 1; height: 38px; }
+
+/* ---------- coming soon ---------- */
+.chip--soon { color: var(--amber); border-color: var(--amber); cursor: pointer; }
+.chip--soon:hover { background: rgba(255,179,71,.12); }
+.notice--warn { color: #FFE3BD; background: rgba(255,179,71,.1); border-color: var(--amber); }
+.section--soon { border-left: 3px solid var(--amber); padding-left: 16px; }
+.section--soon .prefix { display: flex; gap: 8px; }
+.section--soon .prefix input { flex: 1; }

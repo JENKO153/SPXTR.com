@@ -34,6 +34,10 @@ create table if not exists public.security_settings (
   confirm_window_minutes int not null default 5 check (confirm_window_minutes between 1 and 30),
   max_failed_confirms int not null default 5 check (max_failed_confirms between 3 and 20)
 );
+-- Coming soon mode: the store is closed to the public until launch. Admins still see everything,
+-- and anyone with the preview link (preview_key) can look around.
+alter table public.security_settings add column if not exists coming_soon boolean not null default false;
+alter table public.security_settings add column if not exists preview_key text not null default replace(gen_random_uuid()::text, '-', '');
 insert into public.security_settings (id) values (1) on conflict (id) do nothing;
 
 -- One active write window per admin, tied to the session that confirmed the password.
@@ -135,9 +139,45 @@ language sql stable security definer set search_path = public as $$
   select jsonb_build_object(
     'is_admin', public.is_admin(),
     'require_mfa', coalesce((select require_mfa from public.security_settings where id = 1), true),
-    'aal', coalesce(auth.jwt() ->> 'aal', 'aal1')
+    'aal', coalesce(auth.jwt() ->> 'aal', 'aal1'),
+    'coming_soon', public.coming_soon(),
+    'preview_key', (select preview_key from public.security_settings where id = 1 and public.is_admin())
   );
 $$;
+
+-- Is the store closed to the public right now? Used by the read rules below.
+create or replace function public.coming_soon() returns boolean
+language sql stable security definer set search_path = public as $$
+  select coalesce((select coming_soon from public.security_settings where id = 1), false);
+$$;
+grant execute on function public.coming_soon() to anon, authenticated;
+
+-- Turn coming soon on/off, and make a fresh preview link. Both need a confirmed password.
+create or replace function public.set_coming_soon(on_off boolean) returns boolean
+language plpgsql volatile security definer set search_path = public as $$
+begin
+  if not public.can_write() then raise exception 'Not allowed. Confirm your password and try again.'; end if;
+  update public.security_settings set coming_soon = on_off where id = 1;
+  insert into public.audit_log (user_id, email, action, entity, entity_id, summary)
+  values (auth.uid(), coalesce(auth.jwt() ->> 'email', 'Admin'), 'update', 'security_settings', '1',
+          case when on_off then 'Coming soon: on' else 'Coming soon: off' end);
+  return on_off;
+end $$;
+
+create or replace function public.new_preview_key() returns text
+language plpgsql volatile security definer set search_path = public as $$
+declare k text;
+begin
+  if not public.can_write() then raise exception 'Not allowed. Confirm your password and try again.'; end if;
+  k := replace(gen_random_uuid()::text, '-', '');
+  update public.security_settings set preview_key = k where id = 1;
+  insert into public.audit_log (user_id, email, action, entity, entity_id, summary)
+  values (auth.uid(), coalesce(auth.jwt() ->> 'email', 'Admin'), 'update', 'security_settings', '1', 'New preview link');
+  return k;
+end $$;
+
+revoke all on function public.set_coming_soon(boolean), public.new_preview_key() from public, anon;
+grant execute on function public.set_coming_soon(boolean), public.new_preview_key() to authenticated;
 
 -- Validation helpers for check constraints (block javascript:/data: URLs and odd input).
 create or replace function public.valid_asset_url(u text) returns boolean
@@ -298,7 +338,7 @@ create policy security_settings_admin_read on public.security_settings for selec
 -- collections
 drop policy if exists collections_read on public.collections;
 create policy collections_read on public.collections for select to anon, authenticated
-  using (visible or public.admin_ok());
+  using ((visible and not public.coming_soon()) or public.admin_ok());
 drop policy if exists collections_insert on public.collections;
 create policy collections_insert on public.collections for insert to authenticated with check (public.can_write());
 drop policy if exists collections_update on public.collections;
@@ -309,7 +349,7 @@ create policy collections_delete on public.collections for delete to authenticat
 -- products
 drop policy if exists products_read on public.products;
 create policy products_read on public.products for select to anon, authenticated
-  using (status = 'published' or public.admin_ok());
+  using ((status = 'published' and not public.coming_soon()) or public.admin_ok());
 drop policy if exists products_insert on public.products;
 create policy products_insert on public.products for insert to authenticated with check (public.can_write());
 drop policy if exists products_update on public.products;
@@ -675,7 +715,8 @@ grant update (status, featured) on public.reviews to authenticated;
 grant delete on public.reviews to authenticated;
 
 drop policy if exists reviews_read on public.reviews;
-create policy reviews_read on public.reviews for select to anon, authenticated using (status = 'approved' or public.admin_ok());
+create policy reviews_read on public.reviews for select to anon, authenticated
+  using ((status = 'approved' and not public.coming_soon()) or public.admin_ok());
 drop policy if exists reviews_update on public.reviews;
 create policy reviews_update on public.reviews for update to authenticated using (public.can_write()) with check (public.can_write());
 drop policy if exists reviews_delete on public.reviews;
@@ -687,26 +728,45 @@ create policy reviews_delete on public.reviews for delete to authenticated using
 -- products, visible pages and approved reviews; a signed-in admin gets drafts and pending reviews too.
 -- One round trip instead of several keeps the site fast even when the database is slow to answer.
 -- ---------------------------------------------------------------------
-create or replace function public.store_data() returns jsonb
-language sql stable security invoker set search_path = public as $$
-  select jsonb_build_object(
-    'collections', coalesce((select jsonb_agg(to_jsonb(c) order by c.sort_order) from public.collections c), '[]'::jsonb),
+-- Everything the storefront needs in one request. While coming soon is on, visitors get only the
+-- "coming soon" text: no products, no pages, no reviews. Admins, and anyone with the preview link,
+-- see the real store.
+drop function if exists public.store_data();
+create or replace function public.store_data(p_key text default null) returns jsonb
+language plpgsql stable security definer set search_path = public as $$
+declare
+  shut boolean := public.coming_soon();
+  adm boolean := public.admin_ok();
+  settings jsonb := (select data from public.site_settings where id = 1);
+begin
+  if shut and not adm and not (p_key is not null and p_key <> ''
+      and exists (select 1 from public.security_settings s where s.id = 1 and s.preview_key = p_key)) then
+    return jsonb_build_object('coming_soon', true, 'settings', jsonb_build_object(
+      'comingSoon', coalesce(settings -> 'comingSoon', '{}'::jsonb),
+      'theme', coalesce(settings -> 'theme', '{}'::jsonb),
+      'instagram', coalesce(settings -> 'instagram', '"@spxtr"'::jsonb),
+      'instagramUrl', coalesce(settings -> 'instagramUrl', '""'::jsonb)));
+  end if;
+  return jsonb_build_object(
+    'coming_soon', shut,
+    'collections', coalesce((select jsonb_agg(to_jsonb(c) order by c.sort_order)
+      from public.collections c where c.visible or adm), '[]'::jsonb),
     'products', coalesce((
       select jsonb_agg(to_jsonb(p) || jsonb_build_object('product_collections', coalesce((
                select jsonb_agg(jsonb_build_object('collection_id', pc.collection_id))
                from public.product_collections pc where pc.product_id = p.id), '[]'::jsonb))
              order by p.sort_order)
-      from public.products p), '[]'::jsonb),
-    'settings', (select data from public.site_settings where id = 1),
+      from public.products p where p.status = 'published' or adm), '[]'::jsonb),
+    'settings', settings,
     'reviews', coalesce((
       select jsonb_agg(jsonb_build_object('id', r.id, 'created_at', r.created_at, 'status', r.status, 'featured', r.featured,
                                           'product_id', r.product_id, 'verified', r.verified, 'rating', r.rating,
                                           'name', r.name, 'body', r.body, 'photos', r.photos) order by r.created_at desc)
       from (select id, created_at, status, featured, product_id, verified, rating, name, body, photos
-            from public.reviews order by created_at desc limit 300) r), '[]'::jsonb)
+            from public.reviews where status = 'approved' or adm order by created_at desc limit 300) r), '[]'::jsonb)
   );
-$$;
-grant execute on function public.store_data() to anon, authenticated;
+end $$;
+grant execute on function public.store_data(text) to anon, authenticated;
 
 -- ---------------------------------------------------------------------
 -- Image storage: public to view, only a password-confirmed admin can upload/delete.

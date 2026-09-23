@@ -48,6 +48,7 @@ if (window.top !== window.self) { document.documentElement.innerHTML = ''; throw
     $('#demoChip').hidden = CMS.mode !== 'demo';
     $('#stripeLink').href = stripeUrl('payments');
     ADMIN = admin;
+    comingSoonBanner();
     await reload();
     window.addEventListener('hashchange', onHash);
     route();
@@ -70,6 +71,18 @@ if (window.top !== window.self) { document.documentElement.innerHTML = ''; throw
   function applyAccent(hex = DATA.settings.theme?.accent) {
     window.spxAccent?.apply(validAccent(hex) ? hex : null);
   }
+  // The store's address with the preview key on it, for looking around while the store is closed.
+  function previewUrl() {
+    const base = new URL(ROOT, location.href).href.replace(/\/$/, '');
+    return `${base}/?key=${encodeURIComponent(ADMIN?.previewKey || '')}`;
+  }
+  // A reminder in the top bar whenever the store is closed to the public.
+  function comingSoonBanner() {
+    const chip = $('#soonChip');
+    if (chip) { chip.hidden = !ADMIN?.comingSoon; chip.onclick = () => go('#settings'); }
+    syncStoreLink();
+  }
+
   // Tell any store tabs open in this browser to refresh, so changes show without a manual reload.
   const storeTabs = 'BroadcastChannel' in window ? new BroadcastChannel('spx-store') : null;
   const announceChange = () => storeTabs?.postMessage({ type: 'content-changed' });
@@ -126,6 +139,8 @@ if (window.top !== window.self) { document.documentElement.innerHTML = ''; throw
     window.scrollTo(0, 0);
   }
   const go = hash => { dirty = false; location.hash = hash; };
+  // "View store" opens the real site, with the preview key when the store is closed.
+  const syncStoreLink = () => { const a = $('#viewStore'); if (a) a.href = ADMIN?.comingSoon ? previewUrl() : ROOT; };
   const setTitle = t => { $('#viewTitle').textContent = t; document.title = `${t} — SPXTR Admin`; };
 
   /* ---------------- feedback ---------------- */
@@ -232,6 +247,7 @@ if (window.top !== window.self) { document.documentElement.innerHTML = ''; throw
     const items = [];
     const toShip = DATA.orders.filter(o => o.status === 'paid').length;
     if (toShip) items.push(`<a href="#orders">${toShip} order${toShip === 1 ? '' : 's'}</a> waiting to be shipped`);
+    if (ADMIN?.comingSoon) items.push('The store is <a href="#settings">closed to the public</a> (coming soon page is on)');
     const pending = (DATA.reviews || []).filter(r => r.status === 'pending').length;
     if (pending) items.push(`<a href="#reviews">${pending} review${pending === 1 ? '' : 's'}</a> waiting for approval`);
     DATA.products.filter(p => p.status === 'published' && p.stock === 0).forEach(p => items.push(`<a href="#product/${esc(p.id)}">${esc(p.name)}</a> is sold out`));
@@ -1488,6 +1504,23 @@ if (window.top !== window.self) { document.documentElement.innerHTML = ''; throw
     view.innerHTML = `
       <div class="editor">
         <form class="editor__form" id="sform" novalidate>
+          <div class="section section--soon">
+            <h3>Coming soon mode</h3>
+            <p class="hint" style="margin:0 0 12px">Closes the store to the public: visitors only see the message below. You and anyone with your preview link still see the whole site. Products, prices and pages are held back by the database, not just hidden on the page.</p>
+            <label class="toggle"><input type="checkbox" id="soonToggle" ${ADMIN.comingSoon ? 'checked' : ''}>Store is closed with a coming soon page</label>
+            <div id="soonLive" class="notice ${ADMIN.comingSoon ? 'notice--warn' : ''}" ${ADMIN.comingSoon ? '' : 'hidden'} style="margin:10px 0">
+              <b>The store is closed to the public right now.</b> Share the preview link below with anyone who needs to see it early.</div>
+            <div class="field-row">
+              <label>Small text above<input name="csEyebrow" maxlength="60" value="${esc(s.comingSoon.eyebrow)}"></label>
+              <label>Headline<input name="csTitle" maxlength="60" value="${esc(s.comingSoon.title)}"></label>
+            </div>
+            <label>Message<textarea name="csText" rows="3" maxlength="400">${esc(s.comingSoon.text)}</textarea></label>
+            <label class="toggle"><input type="checkbox" name="csEmail" ${s.comingSoon.showEmail !== false ? 'checked' : ''}>Show the "notify me" email box</label>
+            <label>Preview link <span class="hint">Opens the real site while it's closed. Anyone with this link can look around.</span>
+              <div class="prefix"><input id="previewLink" readonly value="${esc(previewUrl())}"><button type="button" class="btn btn--ghost btn--sm" id="copyPreview">Copy</button></div></label>
+            <button type="button" class="btn btn--ghost btn--sm" id="newPreview">Make a new preview link</button>
+            <p class="hint" style="margin:8px 0 0">A new link stops the old one working.</p>
+          </div>
           <div class="section">
             <h3>Announcement bar <small>One message per line, up to 8</small></h3>
             <textarea name="announcements" rows="5" maxlength="700">${esc(s.announcements.join('\n'))}</textarea>
@@ -1616,6 +1649,34 @@ if (window.top !== window.self) { document.documentElement.innerHTML = ''; throw
       </div>`;
 
     const form = $('#sform');
+
+    // Coming soon: the switch and the preview link are saved on the spot (not with the form),
+    // because they change what the public can load from the database.
+    $('#soonToggle').addEventListener('change', async e => {
+      const on = e.target.checked;
+      e.target.disabled = true;
+      const ok = await withWrite(`Enter your admin password to ${on ? 'close the store with a coming soon page' : 'open the store to the public'}.`,
+        async () => { await CMS.setComingSoon(on); ADMIN.comingSoon = on; });
+      e.target.disabled = false;
+      e.target.checked = ADMIN.comingSoon;
+      $('#soonLive').hidden = !ADMIN.comingSoon;
+      $('#soonLive').classList.toggle('notice--warn', ADMIN.comingSoon);
+      if (ok) toast(on ? 'The store is now closed to the public' : 'The store is open to everyone');
+      comingSoonBanner();
+    });
+    $('#copyPreview').addEventListener('click', () => {
+      const el = $('#previewLink');
+      el.select();
+      navigator.clipboard?.writeText(el.value).then(() => toast('Preview link copied'), () => toast('Press Cmd+C to copy', true));
+    });
+    $('#newPreview').addEventListener('click', async () => {
+      if (!confirm('Make a new preview link? The old one stops working straight away.')) return;
+      const ok = await withWrite('Enter your admin password to make a new preview link.', async () => {
+        ADMIN.previewKey = await CMS.newPreviewKey();
+      });
+      if (ok) { $('#previewLink').value = previewUrl(); toast('New preview link ready'); }
+    });
+
     const send = wirePreview(() => ({ settings: {
       ...s,
       hero: { ...s.hero, image: heroImg[0] ? photoDraft(heroImg[0]) : '' },
@@ -1641,6 +1702,7 @@ if (window.top !== window.self) { document.documentElement.innerHTML = ''; throw
       s.season = f.season.value.trim();
       s.freeShippingOver = Math.max(0, Number(f.freeShippingOver.value) || 0);
       s.instagram = f.instagram.value.trim();
+      Object.assign(s.comingSoon, { eyebrow: f.csEyebrow.value.trim(), title: f.csTitle.value.trim(), text: f.csText.value.trim(), showEmail: f.csEmail.checked });
       Object.assign(s.event, { show: f.evShow.checked, kind: f.evKind.value === 'drop' ? 'drop' : 'event', name: f.evName.value.trim(), round: f.evRound.value.trim(), place: f.evPlace.value.trim(), date: f.evDate.value, blurb: f.evBlurb.value.trim() });
     };
     form.addEventListener('input', e => { if (e.target.closest('.items')) return; read(); markDirty(); });

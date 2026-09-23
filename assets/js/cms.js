@@ -79,6 +79,16 @@
     });
   }
 
+  // While "coming soon" is on, a preview link (?key=…) lets the admins and anyone they send it to
+  // look around the real store. The key is remembered for the rest of the visit.
+  function previewKey() {
+    try {
+      const fromUrl = new URLSearchParams(location.search).get('key');
+      if (fromUrl && /^[a-f0-9]{16,64}$/i.test(fromUrl)) sessionStorage.setItem('spx_preview_key', fromUrl);
+      return sessionStorage.getItem('spx_preview_key') || '';
+    } catch { return ''; }
+  }
+
   const sortBy = (list, key = 'sort_order') => list.slice().sort((a, b) => (a[key] ?? 0) - (b[key] ?? 0));
 
   /* =====================================================================
@@ -117,25 +127,28 @@
     async function load(client) {
       try {
         const d = await hedged(async () => {
-          const { data, error } = await client.rpc('store_data');
+          const { data, error } = await client.rpc('store_data', { p_key: previewKey() });
           if (error) throw error;
           return data;
         });
-        return { collections: d.collections, products: d.products.map(toProduct), settings: mergeSettings(d.settings), reviews: d.reviews || [] };
+        if (d.coming_soon && !d.products) return { comingSoon: true, settings: mergeSettings(d.settings), collections: [], products: [], reviews: [] };
+        return { comingSoon: !!d.coming_soon, collections: d.collections, products: d.products.map(toProduct), settings: mergeSettings(d.settings), reviews: d.reviews || [] };
       } catch (err) {
         if (err?.code !== 'PGRST202') console.warn('store_data failed, loading the slow way', err);
       }
       // Each request retries on its own, so one stalled request doesn't hold up the others.
       const read = q => hedged(() => q().then(r => r));
+      const gate = await client.rpc('coming_soon').then(r => !!r.data, () => false);
       const [c, p, s, r] = await Promise.all([
         read(() => client.from('collections').select('*').order('sort_order')),
         read(() => client.from('products').select('*, product_collections(collection_id)').order('sort_order')),
         read(() => client.from('site_settings').select('data').eq('id', 1).maybeSingle()),
         read(() => client.from('reviews').select('id, created_at, status, featured, product_id, verified, rating, name, body, photos').order('created_at', { ascending: false }).limit(300)),
       ]);
+      if (gate && !(p.data || []).length) return { comingSoon: true, collections: [], products: [], reviews: [], settings: mergeSettings(s.data?.data) };
       fail(c.error, 'Could not load pages'); fail(p.error, 'Could not load products'); fail(s.error, 'Could not load settings');
       // reviews are optional: a missing reviews table (schema not re-run yet) shouldn't break the store
-      return { collections: c.data, products: p.data.map(toProduct), settings: mergeSettings(s.data?.data), reviews: r.error ? [] : r.data };
+      return { comingSoon: gate, collections: c.data, products: p.data.map(toProduct), settings: mergeSettings(s.data?.data), reviews: r.error ? [] : r.data };
     }
 
     const bucketPath = url => {
@@ -216,9 +229,9 @@
         const { data: st, error } = await sb.rpc('admin_status');
         if (error || !st?.is_admin) { await sb.auth.signOut({ scope: 'local' }); return { status: 'not_admin' }; }
         const { data: aal } = await sb.auth.mfa.getAuthenticatorAssuranceLevel();
-        if (aal.currentLevel === 'aal2') return { status: 'ok' };
-        if (aal.nextLevel === 'aal2') return { status: 'mfa_verify' };
-        return { status: st.require_mfa ? 'mfa_enroll' : 'ok' };
+        if (aal.currentLevel === 'aal2') return { status: 'ok', raw: st };
+        if (aal.nextLevel === 'aal2') return { status: 'mfa_verify', raw: st };
+        return { status: st.require_mfa ? 'mfa_enroll' : 'ok', raw: st };
       },
       async verifyMfa(code) {
         const sb = admin();
@@ -247,7 +260,8 @@
         const step = await this.nextStep();
         if (step.status !== 'ok') return { needs: step.status };
         const { data: factors } = await sb.auth.mfa.listFactors();
-        return { email: session.user.email, mfa: (factors?.totp || []).length > 0 };
+        return { email: session.user.email, mfa: (factors?.totp || []).length > 0,
+                 comingSoon: !!step.raw?.coming_soon, previewKey: step.raw?.preview_key || '' };
       },
       logout: (everywhere = false) => admin().auth.signOut({ scope: everywhere ? 'global' : 'local' }),
 
@@ -258,6 +272,18 @@
         return data;
       },
       endWrite: () => admin().rpc('end_write_grant'),
+
+      // Coming soon: closes the store to everyone but the admins and the preview link.
+      async setComingSoon(on) {
+        const { data, error } = await admin().rpc('set_coming_soon', { on_off: !!on });
+        fail(error, 'Could not change coming soon mode');
+        return data;
+      },
+      async newPreviewKey() {
+        const { data, error } = await admin().rpc('new_preview_key');
+        fail(error, 'Could not make a new preview link');
+        return data;
+      },
 
       // Start resizing a photo the moment it's picked, so Save only has to upload it.
       prepareImage: (file, o = {}) => processImage(file, o.max || 1800, o.quality || 0.84),
@@ -439,8 +465,10 @@
       demoCredentials: DEMO,
       loadPublic: async () => {
         const s = state();
-        return { collections: s.collections.filter(c => c.visible), products: s.products.filter(p => p.status === 'published'), settings: s.settings,
-                 reviews: s.reviews.filter(r => r.status === 'approved') };
+        const shut = read('comingSoon', false) && previewKey() !== 'deadbeefcafe0123456789abcdef0000' && !session.get();
+        if (shut) return { comingSoon: true, collections: [], products: [], reviews: [], settings: s.settings };
+        return { comingSoon: read('comingSoon', false), collections: s.collections.filter(c => c.visible), products: s.products.filter(p => p.status === 'published'),
+                 settings: s.settings, reviews: s.reviews.filter(r => r.status === 'approved') };
       },
       async submitReview(r) {
         await new Promise(res => setTimeout(res, 400));
@@ -478,7 +506,10 @@
       },
       nextStep: async () => ({ status: session.get() ? 'ok' : 'not_admin' }),
       verifyMfa: async () => {}, startMfaEnroll: async () => ({}), finishMfaEnroll: async () => {},
-      getAdmin: async () => (session.get() ? { email: DEMO.email, mfa: false, demo: true } : null),
+      getAdmin: async () => (session.get() ? { email: DEMO.email, mfa: false, demo: true,
+        comingSoon: read('comingSoon', false), previewKey: 'deadbeefcafe0123456789abcdef0000' } : null),
+      async setComingSoon(on) { guard(); write('comingSoon', !!on); log('update', 'security_settings', { id: '1', name: on ? 'Coming soon: on' : 'Coming soon: off' }); return !!on; },
+      async newPreviewKey() { guard(); return 'deadbeefcafe0123456789abcdef0000'; },
       logout: async () => session.clear(),
 
       async confirm(password) {

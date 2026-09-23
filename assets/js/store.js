@@ -35,10 +35,43 @@ async function loadStore() {
   try {
     const data = PREVIEW ? await previewData() : await CMS.loadPublic();
     SITE = data.settings; COLLECTIONS = data.collections; PRODUCTS = data.products; REVIEWS = data.reviews || [];
+    // Coming soon: the store is closed to the public. The database sends no products, pages or
+    // reviews at all, so there's nothing to show but the curtain. This never resolves, which
+    // stops the rest of the page script from running.
+    if (data.comingSoon && !PRODUCTS.length) { showComingSoon(); await new Promise(() => {}); }
   } catch (err) {
     console.error(err);
     document.body.insertAdjacentHTML('afterbegin', '<div style="background:#FF3B2F;color:#fff;padding:10px 16px;font:600 14px sans-serif;text-align:center">The store is having trouble loading. Please refresh in a moment.</div>');
   }
+}
+
+// The "coming soon" curtain. Wording comes from Admin -> Homepage & settings.
+function showComingSoon() {
+  const c = { ...(CMS.mergeSettings({}).comingSoon || {}), ...(SITE.comingSoon || {}) };
+  const ig = instagramLink();
+  document.title = `${c.title || 'Coming soon'} — ${STORE.name}`;
+  document.body.className = 'soon';
+  document.body.innerHTML = `
+    <main class="soon__wrap">
+      <img class="soon__ghost" src="${esc(STORE.brand.ghost)}" alt="" data-fallback="ghost">
+      <img class="soon__word" src="${esc(STORE.brand.wordmark)}" alt="${esc(STORE.name)}" data-fallback="word">
+      <span class="eyebrow">${esc(c.eyebrow || '')}</span>
+      <h1 class="display">${esc(c.title || 'Something\'s coming.')}</h1>
+      <p>${esc(c.text || '')}</p>
+      ${c.showEmail === false ? '' : `<form class="soon__form" id="soon-notify">
+        <input type="email" required maxlength="120" placeholder="Your email" aria-label="Your email">
+        <button class="btn" type="submit">Notify me</button>
+      </form>`}
+      ${ig ? `<a class="link-arrow" href="${esc(ig)}" target="_blank" rel="noopener noreferrer">${esc(SITE.instagram || 'Instagram')} ${ICON.arrow}</a>` : ''}
+      <span class="soon__stamp stamp">Rider tested</span>
+    </main>`;
+  wireBrandFallbacks();
+  $('#soon-notify')?.addEventListener('submit', e => {
+    e.preventDefault(); e.target.reset();
+    const t = document.createElement('div'); t.className = 'soon__thanks'; t.textContent = "You're on the list. See you at launch.";
+    e.target.replaceWith(t);
+  });
+  document.documentElement.classList.remove('is-loading');
 }
 
 const ICON = {

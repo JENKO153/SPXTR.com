@@ -123,7 +123,10 @@ function renderReports() {
   const productName = id => (PRODUCTS.find(p => p.id === id) || {}).name || '';
   const featured = (typeof REVIEWS !== 'undefined' ? REVIEWS : []).filter(r => r.status === 'approved' && r.featured)
     .map(r => ({ quote: r.body, name: r.name, stars: r.rating, verified: r.verified, meta: productName(r.product_id), photos: r.photos || [] }));
-  const all = [...featured, ...(SITE.reports || [])].filter(r => r.quote).slice(0, 9);
+  // Featured customer reviews take the place of the typed-in ones. The typed ones only fill the
+  // rest of the row while there are fewer than three featured.
+  const typed = (SITE.reports || []).filter(r => r.quote);
+  const all = (featured.length ? [...featured, ...typed.slice(0, Math.max(0, 3 - featured.length))] : typed).filter(r => r.quote).slice(0, 9);
   const shown = all.length > 3 ? all.slice(0, all.length - all.length % 3) : all;   // full rows of 3 on desktop
   $('#reports').innerHTML = shown.map(r => {
     const photos = (r.photos || []).map(safeUrl).filter(Boolean);

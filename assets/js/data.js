@@ -43,6 +43,13 @@ const DEFAULT_SETTINGS = {
   freeShippingOver: 100,
   // Product types (Hoodies, Tees, ...). Admin -> Products -> Product types. Used for the shop filters.
   productTypes: ['Hoodies', 'Tees', 'Outerwear', 'Bottoms', 'Headwear', 'Gear'],
+  // The "coming soon" curtain (Admin -> Homepage & settings). The switch itself lives in the database.
+  comingSoon: {
+    eyebrow: 'SPXTR Collective',
+    title: 'Something\'s coming.',
+    text: "We're building it right now. Drop your email and you'll be first through the gate when it opens.",
+    showEmail: true,
+  },
   instagram: '@spxtr',
   instagramUrl: '',
   announcements: ['Season 04 out now', 'Free shipping over $100', 'Rider tested. Crash approved', '30-day returns, no questions', 'Join the crew for 10% off your first order'],
