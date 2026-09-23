@@ -15,7 +15,7 @@ with checks as (
   where n.nspname = 'public' and c.relkind = 'r'
     and c.relname in ('admins','security_settings','admin_write_grants','admin_confirm_attempts',
                       'collections','products','product_collections','site_settings','audit_log',
-                      'orders','order_items')
+                      'orders','order_items','reviews','review_submissions','setup_done')
 
   union all
   -- 2. The public (not-logged-in) role cannot write to anything
@@ -111,8 +111,25 @@ with checks as (
     and routine_name in ('record_paid_order','record_refund','mark_order_email')
 
   union all
-  -- 13. Admins can change fulfilment details only, never amounts or customer details
-  select '13. Order amounts are read-only for admins',
+  -- 13. Reviews only appear once an admin has approved them
+  select '13. Reviews need approval',
+         case when (select count(*) from pg_policies where schemaname = 'public' and tablename = 'reviews'
+                      and cmd = 'SELECT' and qual like '%approved%') = 0
+                   then 'FAIL — the read rule on reviews is missing. Re-run schema.sql'
+              else 'PASS — ' || (select count(*) from public.reviews where status = 'pending') || ' waiting for approval' end
+
+  union all
+  -- 14. Coming soon: when it's on, the public gets no products, pages or reviews at all
+  select '14. Coming soon mode',
+         case when not coalesce((select coming_soon from public.security_settings where id = 1), false) then 'OK — store is open to everyone'
+              when (select count(*) from pg_policies where schemaname = 'public' and tablename = 'products'
+                      and cmd = 'SELECT' and qual like '%coming_soon%') = 0
+                   then 'FAIL — the store is closed but the read rule is missing. Re-run schema.sql'
+              else 'PASS — store is closed to the public, admins and the preview link still see it' end
+
+  union all
+  -- 15. Admins can change fulfilment details only, never amounts or customer details
+  select '15. Order amounts are read-only for admins',
          case when count(*) = 0 then 'PASS'
               else 'FAIL — admins can edit: ' || string_agg(column_name, ', ') end
   from information_schema.column_privileges
