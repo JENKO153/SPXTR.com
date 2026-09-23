@@ -562,6 +562,7 @@ input, select { font: inherit; color: inherit; }
 }
 
 /* ---------- coming soon curtain ---------- */
+.preview-problem { position: sticky; top: 0; z-index: 95; background: var(--red); color: #fff; padding: 10px 14px; font: 500 13px/1.45 var(--sans); text-align: center; }
 .preview-bar button { margin-left: 12px; font: inherit; text-decoration: underline; color: inherit; }
 .preview-bar { position: sticky; top: 0; z-index: 90; background: var(--hot); color: var(--ink); text-align: center; padding: 7px 12px; font: 600 11px/1.3 var(--mono); letter-spacing: .12em; text-transform: uppercase; }
 body.soon { display: grid; place-items: center; min-height: 100vh; min-height: 100svh; padding: 40px var(--gutter); background: var(--bg); }

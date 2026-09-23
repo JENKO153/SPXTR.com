@@ -415,7 +415,20 @@ function onPreview(handler) {
   if (!PREVIEW) return;
   window.addEventListener('message', e => {
     if (e.origin !== location.origin || e.source !== window.parent || e.data?.type !== 'spx:preview') return;
-    handler(e.data);
+    // If drawing the draft ever fails, the preview would quietly freeze on the last good version
+    // and look like the edits aren't saving. Say so instead: it means this preview is running an
+    // older copy of the site's code, which a refresh fixes.
+    try { handler(e.data); previewProblem(false); }
+    catch (err) { console.error(err); previewProblem(true); }
   });
   window.parent.postMessage({ type: 'spx:preview-ready' }, location.origin);
+}
+
+function previewProblem(show) {
+  let bar = $('#preview-problem');
+  if (!show) { bar?.remove(); return; }
+  if (bar) return;
+  document.body.insertAdjacentHTML('afterbegin',
+    `<div id="preview-problem" class="preview-problem">This preview is out of date, so it has stopped following your edits.
+       Press <b>Cmd/Ctrl + Shift + R</b> to refresh the admin. Your changes are still safe — save as normal.</div>`);
 }
