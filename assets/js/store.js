@@ -47,6 +47,8 @@ async function loadStore() {
 
 // The "coming soon" curtain. Wording comes from Admin -> Homepage & settings.
 function showComingSoon() {
+  const badKey = CMS.previewKeyTried?.();
+  CMS.forgetPreviewKey?.();          // it didn't work, so don't keep trying it on every page
   const c = { ...(CMS.mergeSettings({}).comingSoon || {}), ...(SITE.comingSoon || {}) };
   const ig = instagramLink();
   document.title = `${c.title || 'Coming soon'} — ${STORE.name}`;
@@ -62,7 +64,7 @@ function showComingSoon() {
         <input type="email" required maxlength="120" placeholder="Your email" aria-label="Your email">
         <button class="btn" type="submit">Notify me</button>
       </form>`}
-      ${CMS.previewKeyTried?.() ? `<p class="soon__bad">That preview link didn't work. It may have been cut short when it was copied, or replaced with a new one. Ask for a fresh link from Admin → Homepage &amp; settings.</p>` : ''}
+      ${badKey ? `<p class="soon__bad">That preview link didn't work. It may have been cut short when it was copied, or replaced with a new one. Ask for a fresh link from Admin → Homepage &amp; settings.</p>` : ''}
       ${ig ? `<a class="link-arrow" href="${esc(ig)}" target="_blank" rel="noopener noreferrer">${esc(SITE.instagram || 'Instagram')} ${ICON.arrow}</a>` : ''}
       <span class="soon__stamp stamp">Rider tested</span>
     </main>`;

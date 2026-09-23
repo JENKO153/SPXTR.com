@@ -90,8 +90,14 @@
       return fromUrl || clean(sessionStorage.getItem('spx_preview_key'));
     } catch { return ''; }
   }
-  // Was a preview link used on this visit? (So the closed page can say when one didn't work.)
-  const previewKeyTried = () => /[?#&]key=/.test(location.href) || (() => { try { return !!sessionStorage.getItem('spx_preview_key'); } catch { return false; } })();
+  // Did THIS page address carry a preview key? (So the closed page only explains a link that was
+  // actually used. An ordinary visitor, or a leftover key from an earlier visit, gets no message.)
+  const previewKeyTried = () => {
+    const get = q => new URLSearchParams(q).get('key');
+    return !!(get(location.search.slice(1)) || get(location.hash.slice(1)) || '').trim();
+  };
+  // A key the database refused is worth forgetting, so it can't haunt the rest of the visit.
+  const forgetPreviewKey = () => { try { sessionStorage.removeItem('spx_preview_key'); } catch {} };
 
   const sortBy = (list, key = 'sort_order') => list.slice().sort((a, b) => (a[key] ?? 0) - (b[key] ?? 0));
 
@@ -636,6 +642,6 @@
 
   const backend = configured && window.supabase ? supabaseBackend() : demoBackend();
   backend.captchaEnabled = configured && !!cfg.captcha?.siteKey;
-  window.CMS = Object.assign(backend, { configured, esc, slugify, mergeSettings, imageOk, previewKeyTried });
+  window.CMS = Object.assign(backend, { configured, esc, slugify, mergeSettings, imageOk, previewKeyTried, forgetPreviewKey });
   window.esc = esc;
 })(window);
