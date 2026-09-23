@@ -142,8 +142,10 @@
           if (error) throw error;
           return data;
         });
-        if (d.coming_soon && !d.products) return { comingSoon: true, settings: mergeSettings(d.settings), collections: [], products: [], reviews: [] };
-        return { comingSoon: !!d.coming_soon, collections: d.collections, products: d.products.map(toProduct), settings: mergeSettings(d.settings), reviews: d.reviews || [] };
+        // "locked" means the database actually held the store back. When the preview key (or an
+        // admin login) let us through, the real store comes back even if it's still empty.
+        if (!d.products) return { locked: true, comingSoon: true, settings: mergeSettings(d.settings), collections: [], products: [], reviews: [] };
+        return { locked: false, comingSoon: !!d.coming_soon, collections: d.collections, products: d.products.map(toProduct), settings: mergeSettings(d.settings), reviews: d.reviews || [] };
       } catch (err) {
         if (err?.code !== 'PGRST202') console.warn('store_data failed, loading the slow way', err);
       }
@@ -156,10 +158,12 @@
         read(() => client.from('site_settings').select('data').eq('id', 1).maybeSingle()),
         read(() => client.from('reviews').select('id, created_at, status, featured, product_id, verified, rating, name, body, photos').order('created_at', { ascending: false }).limit(300)),
       ]);
-      if (gate && !(p.data || []).length) return { comingSoon: true, collections: [], products: [], reviews: [], settings: mergeSettings(s.data?.data) };
+      // Slow path (only used if store_data is missing): the read rules hide everything while the
+      // store is closed, and a preview key can't be checked here, so treat it as locked.
+      if (gate && !(p.data || []).length) return { locked: true, comingSoon: true, collections: [], products: [], reviews: [], settings: mergeSettings(s.data?.data) };
       fail(c.error, 'Could not load pages'); fail(p.error, 'Could not load products'); fail(s.error, 'Could not load settings');
       // reviews are optional: a missing reviews table (schema not re-run yet) shouldn't break the store
-      return { comingSoon: gate, collections: c.data, products: p.data.map(toProduct), settings: mergeSettings(s.data?.data), reviews: r.error ? [] : r.data };
+      return { locked: false, comingSoon: gate, collections: c.data, products: p.data.map(toProduct), settings: mergeSettings(s.data?.data), reviews: r.error ? [] : r.data };
     }
 
     const bucketPath = url => {
@@ -483,8 +487,8 @@
       loadPublic: async () => {
         const s = state();
         const shut = read('comingSoon', false) && previewKey() !== 'deadbeefcafe0123456789abcdef0000' && !session.get();
-        if (shut) return { comingSoon: true, collections: [], products: [], reviews: [], settings: s.settings };
-        return { comingSoon: read('comingSoon', false), collections: s.collections.filter(c => c.visible), products: s.products.filter(p => p.status === 'published'),
+        if (shut) return { locked: true, comingSoon: true, collections: [], products: [], reviews: [], settings: s.settings };
+        return { locked: false, comingSoon: read('comingSoon', false), collections: s.collections.filter(c => c.visible), products: s.products.filter(p => p.status === 'published'),
                  settings: s.settings, reviews: s.reviews.filter(r => r.status === 'approved') };
       },
       async submitReview(r) {

@@ -35,10 +35,12 @@ async function loadStore() {
   try {
     const data = PREVIEW ? await previewData() : await CMS.loadPublic();
     SITE = data.settings; COLLECTIONS = data.collections; PRODUCTS = data.products; REVIEWS = data.reviews || [];
-    // Coming soon: the store is closed to the public. The database sends no products, pages or
-    // reviews at all, so there's nothing to show but the curtain. This never resolves, which
-    // stops the rest of the page script from running.
-    if (data.comingSoon && !PRODUCTS.length) { showComingSoon(); await new Promise(() => {}); }
+    // Closed to the public: the database held the store back, so there's nothing to show but the
+    // curtain. This never resolves, which stops the rest of the page script from running.
+    // An admin, or a visitor with the preview link, gets the real site instead — even when it's
+    // still empty — with a reminder bar across the top.
+    if (data.locked) { showComingSoon(); await new Promise(() => {}); }
+    if (data.comingSoon) previewBar();
   } catch (err) {
     console.error(err);
     document.body.insertAdjacentHTML('afterbegin', '<div style="background:#FF3B2F;color:#fff;padding:10px 16px;font:600 14px sans-serif;text-align:center">The store is having trouble loading. Please refresh in a moment.</div>');
@@ -75,6 +77,13 @@ function showComingSoon() {
     e.target.replaceWith(t);
   });
   document.documentElement.classList.remove('is-loading');
+}
+
+// Shown to whoever is looking around with the preview link while the store is closed.
+function previewBar() {
+  if ($('.preview-bar')) return;
+  document.body.insertAdjacentHTML('afterbegin',
+    '<div class="preview-bar">Preview // the store is still closed to the public</div>');
 }
 
 const ICON = {
