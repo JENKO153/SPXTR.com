@@ -740,8 +740,11 @@ declare
   adm boolean := public.admin_ok();
   settings jsonb := (select data from public.site_settings where id = 1);
 begin
-  if shut and not adm and not (p_key is not null and p_key <> ''
-      and exists (select 1 from public.security_settings s where s.id = 1 and s.preview_key = p_key)) then
+  -- The preview key is matched loosely on purpose: spaces, capitals and any dashes a link
+  -- picked up on the way (email, messages) shouldn't stop the clients getting in.
+  if shut and not adm and not (p_key is not null and btrim(p_key) <> ''
+      and exists (select 1 from public.security_settings s where s.id = 1
+                  and lower(replace(btrim(s.preview_key), '-', '')) = lower(replace(btrim(p_key), '-', '')))) then
     return jsonb_build_object('coming_soon', true, 'settings', jsonb_build_object(
       'comingSoon', coalesce(settings -> 'comingSoon', '{}'::jsonb),
       'theme', coalesce(settings -> 'theme', '{}'::jsonb),

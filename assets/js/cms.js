@@ -82,7 +82,8 @@
   // While "coming soon" is on, a preview link (?key=…) lets the admins and anyone they send it to
   // look around the real store. The key is remembered for the rest of the visit.
   function previewKey() {
-    const clean = v => (String(v || '').trim().match(/[a-f0-9]{16,64}/i) || [''])[0];
+    // Any key the admin has set: letters, numbers, dots, dashes and underscores.
+    const clean = v => (String(v || '').trim().match(/[A-Za-z0-9._-]{6,64}/) || [''])[0];
     try {
       // ?key=… or #key=… , and a key pasted on its own is picked up too.
       const fromUrl = clean(new URLSearchParams(location.search).get('key') || new URLSearchParams(location.hash.slice(1)).get('key'));
