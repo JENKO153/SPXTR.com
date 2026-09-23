@@ -571,6 +571,7 @@ body.soon::after { content: ''; position: fixed; right: -12%; bottom: -10%; widt
 .soon__form { display: flex; gap: 10px; width: min(440px, 100%); flex-wrap: wrap; }
 .soon__form input { flex: 1 1 220px; min-width: 0; height: 54px; padding: 0 16px; background: var(--surface); border: 1px solid var(--line-2); color: var(--bone); font: 400 16px var(--sans); }
 .soon__form input:focus { outline: none; border-color: var(--hot); }
+.soon__bad { margin: 0; padding: 12px 16px; border: 1px solid var(--red); color: #FFD2CE; font: 500 13px/1.5 var(--sans); max-width: 46ch; }
 .soon__thanks { font: 500 13px var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--hot); }
 .soon__stamp { margin-top: 10px; }
 @media (max-width: 540px) { .soon__form .btn { width: 100%; } }

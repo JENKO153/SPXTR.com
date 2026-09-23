@@ -82,12 +82,16 @@
   // While "coming soon" is on, a preview link (?key=…) lets the admins and anyone they send it to
   // look around the real store. The key is remembered for the rest of the visit.
   function previewKey() {
+    const clean = v => (String(v || '').trim().match(/[a-f0-9]{16,64}/i) || [''])[0];
     try {
-      const fromUrl = new URLSearchParams(location.search).get('key');
-      if (fromUrl && /^[a-f0-9]{16,64}$/i.test(fromUrl)) sessionStorage.setItem('spx_preview_key', fromUrl);
-      return sessionStorage.getItem('spx_preview_key') || '';
+      // ?key=… or #key=… , and a key pasted on its own is picked up too.
+      const fromUrl = clean(new URLSearchParams(location.search).get('key') || new URLSearchParams(location.hash.slice(1)).get('key'));
+      if (fromUrl) sessionStorage.setItem('spx_preview_key', fromUrl);
+      return fromUrl || clean(sessionStorage.getItem('spx_preview_key'));
     } catch { return ''; }
   }
+  // Was a preview link used on this visit? (So the closed page can say when one didn't work.)
+  const previewKeyTried = () => /[?#&]key=/.test(location.href) || (() => { try { return !!sessionStorage.getItem('spx_preview_key'); } catch { return false; } })();
 
   const sortBy = (list, key = 'sort_order') => list.slice().sort((a, b) => (a[key] ?? 0) - (b[key] ?? 0));
 
@@ -625,6 +629,6 @@
 
   const backend = configured && window.supabase ? supabaseBackend() : demoBackend();
   backend.captchaEnabled = configured && !!cfg.captcha?.siteKey;
-  window.CMS = Object.assign(backend, { configured, esc, slugify, mergeSettings, imageOk });
+  window.CMS = Object.assign(backend, { configured, esc, slugify, mergeSettings, imageOk, previewKeyTried });
   window.esc = esc;
 })(window);

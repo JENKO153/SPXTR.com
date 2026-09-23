@@ -73,8 +73,9 @@ if (window.top !== window.self) { document.documentElement.innerHTML = ''; throw
   }
   // The store's address with the preview key on it, for looking around while the store is closed.
   function previewUrl() {
+    if (!ADMIN?.previewKey) return '';
     const base = new URL(ROOT, location.href).href.replace(/\/$/, '');
-    return `${base}/?key=${encodeURIComponent(ADMIN?.previewKey || '')}`;
+    return `${base}/?key=${encodeURIComponent(ADMIN.previewKey)}`;
   }
   // A reminder in the top bar whenever the store is closed to the public.
   function comingSoonBanner() {
@@ -1516,8 +1517,9 @@ if (window.top !== window.self) { document.documentElement.innerHTML = ''; throw
             </div>
             <label>Message<textarea name="csText" rows="3" maxlength="400">${esc(s.comingSoon.text)}</textarea></label>
             <label class="toggle"><input type="checkbox" name="csEmail" ${s.comingSoon.showEmail !== false ? 'checked' : ''}>Show the "notify me" email box</label>
-            <label>Preview link <span class="hint">Opens the real site while it's closed. Anyone with this link can look around.</span>
+            <label>Preview link <span class="hint">Opens the real site while it's closed. Use the Copy button: selecting it by hand often misses the end.</span>
               <div class="prefix"><input id="previewLink" readonly value="${esc(previewUrl())}"><button type="button" class="btn btn--ghost btn--sm" id="copyPreview">Copy</button></div></label>
+            ${ADMIN.previewKey ? '' : '<p class="hint" style="color:var(--amber);margin:0 0 10px">No preview link yet. Press "Make a new preview link" below to create one.</p>'}
             <button type="button" class="btn btn--ghost btn--sm" id="newPreview">Make a new preview link</button>
             <p class="hint" style="margin:8px 0 0">A new link stops the old one working.</p>
           </div>
@@ -1666,7 +1668,8 @@ if (window.top !== window.self) { document.documentElement.innerHTML = ''; throw
     });
     $('#copyPreview').addEventListener('click', () => {
       const el = $('#previewLink');
-      el.select();
+      if (!el.value) { toast('Make a preview link first', true); return; }
+      el.select(); el.setSelectionRange(0, el.value.length);
       navigator.clipboard?.writeText(el.value).then(() => toast('Preview link copied'), () => toast('Press Cmd+C to copy', true));
     });
     $('#newPreview').addEventListener('click', async () => {
