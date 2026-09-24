@@ -35,6 +35,7 @@ async function loadStore() {
   try {
     const data = PREVIEW ? await previewData() : await CMS.loadPublic();
     SITE = data.settings; COLLECTIONS = data.collections; PRODUCTS = data.products; REVIEWS = data.reviews || [];
+    applyStoreAccent();      // the brand colour, before anything draws — including the closed page
     // Closed to the public: the database held the store back, so there's nothing to show but the
     // curtain. This never resolves, which stops the rest of the page script from running.
     // An admin, or a visitor with the preview link, gets the real site instead — even when it's
@@ -152,6 +153,13 @@ function fillTicker(track, html) {
   }
 }
 
+// The colour set in Admin -> Customise. Called as soon as the settings land, so every page
+// wears it, the coming soon page included, whether or not this browser has seen the site before.
+function applyStoreAccent() {
+  const accent = SITE.theme?.accent;
+  window.spxAccent?.apply(validAccent(accent) ? accent : null);
+}
+
 /* ---------------- chrome ---------------- */
 function navItems() {
   return [
@@ -218,9 +226,7 @@ function renderChrome(active = '') {
     </aside>
     <div class="toast" role="status">${ICON.check}<span></span></div>`;
 
-  // Brand accent from Admin -> Customise (the page is still hidden, so there's no colour flash)
-  const accent = SITE.theme?.accent;
-  window.spxAccent?.apply(validAccent(accent) ? accent : null);
+  applyStoreAccent();
 
   // Pages start hidden (class="is-loading" on <html>) so nobody sees placeholder content
   // before the real content arrives. The page's own render runs right after this in the same
