@@ -16,6 +16,8 @@ const STORE = Object.freeze({
   brand: { wordmark: 'assets/brand/spxtr-wordmark.jpg', ghost: 'assets/brand/spxtr-ghost.jpg',
            // see-through versions, for pages that put the logo straight onto the background
            ghostClear: 'assets/brand/ghost-white-192.png',
+           // Seventh Boar Development — the studio credit on the coming soon page
+           builder: 'assets/brand/seventh-boar.webp',
            // transparent version of the wordmark, used as the stencil for the giant footer logo
            wordmarkMask: 'assets/brand/spxtr-wordmark-mask.png' },
   badges: ['New', 'Bestseller', 'Limited', 'Low stock', 'Sale'],

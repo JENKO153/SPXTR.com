@@ -68,7 +68,8 @@ function showComingSoon() {
       </form>`}
       ${badKey ? `<p class="soon__bad">That preview link didn't work. It may have been cut short when it was copied, or replaced with a new one. Ask for a fresh link from Admin → Homepage &amp; settings.</p>` : ''}
       ${ig ? `<a class="link-arrow" href="${esc(ig)}" target="_blank" rel="noopener noreferrer">${esc(SITE.instagram || 'Instagram')} ${ICON.arrow}</a>` : ''}
-      <span class="soon__stamp stamp">Rider tested</span>
+      <div class="soon__by"><span>Built by</span>
+        <img src="${esc(STORE.brand.builder)}" alt="Seventh Boar Development" loading="lazy"></div>
     </main>`;
   wireBrandFallbacks();
   // "Notify me": saved to the launch list, with a short email back saying they're on it.
