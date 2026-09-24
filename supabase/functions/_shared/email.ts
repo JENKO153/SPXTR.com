@@ -25,7 +25,22 @@ export async function loadAccent(db: { from: (t: string) => any }) {
 export const senderFor = (kind: 'order' | 'launch' = 'order') =>
   (kind === 'launch' ? Deno.env.get('LAUNCH_EMAIL_FROM') : '') || Deno.env.get('EMAIL_FROM');
 
-export async function sendEmail(to: string, subject: string, html: string, text?: string, from?: string) {
+// kind 'order' = one-to-one mail about something the customer did (confirmation, shipping). It
+// carries no bulk headers, which is what keeps it out of Gmail's Promotions tab.
+// kind 'bulk' = the launch announcement: it must carry a one-click unsubscribe, both because Gmail
+// expects it from bulk senders and because the law does.
+export async function sendEmail(
+  to: string, subject: string, html: string, text?: string, from?: string,
+  opts: { kind?: 'order' | 'bulk'; unsubUrl?: string } = {},
+) {
+  const headers: Record<string, string> = {};
+  if (opts.kind === 'bulk' && opts.unsubUrl) {
+    headers['List-Unsubscribe'] = `<${opts.unsubUrl}>`;
+    headers['List-Unsubscribe-Post'] = 'List-Unsubscribe=One-Click';
+  } else {
+    // Marks each one as its own conversation rather than part of a campaign.
+    headers['X-Entity-Ref-ID'] = crypto.randomUUID();
+  }
   const res = await fetch('https://api.resend.com/emails', {
     method: 'POST',
     headers: { Authorization: `Bearer ${Deno.env.get('RESEND_API_KEY')}`, 'Content-Type': 'application/json' },
@@ -35,6 +50,7 @@ export async function sendEmail(to: string, subject: string, html: string, text?
       subject,
       html,
       text,
+      headers,
       reply_to: Deno.env.get('SHOP_EMAIL') || undefined,
     }),
   });
