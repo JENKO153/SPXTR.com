@@ -60,6 +60,9 @@ const DEFAULT_SETTINGS = {
   announcements: ['Season 04 out now', 'Free shipping over $100', 'Rider tested. Crash approved', '30-day returns, no questions', 'Join the crew for 10% off your first order'],
   marquee: ['Send it', 'Ghost it', 'No days off', 'Crash, get up', 'Ride again'],
   hero: {
+    // Moving banner. Empty (or "Use the video" switched off) leaves the photo showing.
+    video: 'assets/video/hero.mp4',
+    videoOn: true,
     eyebrow: 'Season 04 // Est. 2021',
     line1: 'Send it.',
     line2: 'Ghost it.',

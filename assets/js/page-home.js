@@ -41,6 +41,7 @@ const safeLink = u => (/^(https:\/\/|mailto:|\/|#|\.\/|[a-z0-9-]+(\.html|\/))/i.
 function renderHome() {
   const h = SITE.hero;
   $('#hero-img').src = safeUrl(h.image) || IMG + 'hero-roost.jpg';
+  heroVideo(h);
   $('#hero-eyebrow').textContent = h.eyebrow;
   $('#hero-title').innerHTML = `${esc(h.line1)}<br><em>${esc(h.line2)}</em>`;
   $('#hero-sub').textContent = h.subtitle;
@@ -100,6 +101,27 @@ function renderHome() {
   $('#ig-handle').href = ig || '#';
   if (ig) { $('#ig-handle').target = '_blank'; $('#ig-handle').rel = 'noopener noreferrer'; }
 }
+
+// The banner video, if one is set and the visitor hasn't asked for less movement. The photo
+// stays underneath, so there's always something to look at while the video loads (or if it can't).
+function heroVideo(h) {
+  const el = $('#hero-video');
+  if (!el) return;
+  const quiet = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+  const saver = navigator.connection?.saveData;
+  const src = h.videoOn === false ? '' : safeVideo(h.video);
+  if (!src || quiet || saver || PREVIEW) { el.hidden = true; el.removeAttribute('src'); el.load?.(); return; }
+  if (el.dataset.src !== src) {
+    el.dataset.src = src;
+    el.src = src;
+    el.preload = 'auto';
+    el.addEventListener('error', () => { el.hidden = true; }, { once: true });
+    // Only swap it in once it can actually play, so nobody sees a black box.
+    el.addEventListener('canplay', () => { el.hidden = false; el.play?.().catch(() => { el.hidden = true; }); }, { once: true });
+    el.load();
+  }
+}
+const safeVideo = u => (/^(https:\/\/|assets\/video\/[a-z0-9._-]+\.(mp4|webm))$/i.test(u || '') ? u : '');
 
 function renderTested() {
   const t = SITE.tested;

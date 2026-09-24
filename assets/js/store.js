@@ -56,6 +56,7 @@ function showComingSoon() {
   document.title = `${c.title || 'Coming soon'} — ${STORE.name}`;
   document.body.className = 'soon';
   document.body.innerHTML = `
+    ${comingSoonVideo()}
     <main class="soon__wrap">
       <img class="soon__ghost" src="${esc(STORE.brand.ghostClear)}" alt="">
       <div class="soon__word" role="img" aria-label="${esc(STORE.name)}" style="-webkit-mask-image:url('${esc(STORE.brand.wordmarkMask)}');mask-image:url('${esc(STORE.brand.wordmarkMask)}')"></div>
@@ -439,6 +440,18 @@ function onPreview(handler) {
   });
   window.parent.postMessage({ type: 'spx:preview-ready' }, location.origin);
 }
+
+// The same banner clip, dimmed right down behind the coming soon page. Skipped when the visitor
+// has asked for less movement or is on a data saver: the page reads perfectly well without it.
+function comingSoonVideo() {
+  const h = SITE.hero || {};
+  const src = h.videoOn === false ? '' : safeVideoUrl(h.video);
+  const quiet = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+  const saver = navigator.connection?.saveData;
+  if (!src || quiet || saver) return '';
+  return `<video class="soon__video" src="${esc(src)}" muted loop playsinline autoplay preload="auto" aria-hidden="true"></video>`;
+}
+const safeVideoUrl = u => (/^(https:\/\/|assets\/video\/[a-z0-9._-]+\.(mp4|webm))$/i.test(u || '') ? u : '');
 
 function previewProblem(show) {
   let bar = $('#preview-problem');
