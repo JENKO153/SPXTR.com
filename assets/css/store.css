@@ -569,12 +569,7 @@ input, select { font: inherit; color: inherit; }
 .preview-problem { position: sticky; top: 0; z-index: 95; background: var(--red); color: #fff; padding: 10px 14px; font: 500 13px/1.45 var(--sans); text-align: center; }
 .preview-bar button { margin-left: 12px; font: inherit; text-decoration: underline; color: inherit; }
 .preview-bar { position: sticky; top: 0; z-index: 90; background: var(--hot); color: var(--ink); text-align: center; padding: 7px 12px; font: 600 11px/1.3 var(--mono); letter-spacing: .12em; text-transform: uppercase; }
-/* The banner clip behind the curtain: dimmed hard so the type stays the loudest thing on screen. */
-.soon__video { position: fixed; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: center; z-index: -2; opacity: .42; filter: saturate(.75) contrast(1.05) brightness(.8); }
-body.soon::before { content: ''; position: fixed; inset: 0; z-index: -1; pointer-events: none;
-  background: radial-gradient(105% 78% at 50% 45%, rgba(10,10,10,.62) 0%, rgba(10,10,10,.84) 55%, rgba(10,10,10,.96) 100%); }
-/* No background of its own: the page colour comes from <html>, so the video behind it shows. */
-body.soon { display: grid; place-items: center; min-height: 100vh; min-height: 100svh; padding: clamp(24px, 5vh, 48px) var(--gutter); background: none; }
+body.soon { display: grid; place-items: center; min-height: 100vh; min-height: 100svh; padding: clamp(24px, 5vh, 48px) var(--gutter); background: var(--bg); }
 body.soon::after { content: ''; position: fixed; right: -12%; bottom: -10%; width: 60%; height: 80%; z-index: -1; pointer-events: none;
   background: repeating-linear-gradient(115deg, transparent 0 34px, color-mix(in srgb, var(--hot) 8%, transparent) 34px 40px); clip-path: polygon(30% 0, 100% 0, 100% 100%, 0 100%); }
 .soon__wrap { position: relative; width: min(620px, 100%); text-align: center; display: grid; justify-items: center; gap: clamp(12px, 2.2vh, 18px); }
