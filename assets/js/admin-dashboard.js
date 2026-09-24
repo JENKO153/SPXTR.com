@@ -292,7 +292,7 @@ if (window.top !== window.self) { document.documentElement.innerHTML = ''; throw
   const who = a => NAMES[String(a.email || '').toLowerCase()] || a.email || 'Admin';
   const ACTION = { insert: 'created', update: 'updated', delete: 'deleted' };
   const ENTITY = { products: 'product', collections: 'page', site_settings: 'homepage & settings', orders: 'order', reviews: 'review',
-                   security_settings: 'store settings', admins: 'account' };
+                   security_settings: 'store settings', admins: 'account', email: 'email', launch_signups: 'launch list' };
   const activityItem = a => `<li><time>${fmtDate(a.at)}</time><span>${esc(who(a))} ${ACTION[a.action] || esc(a.action)} ${ENTITY[a.entity] || esc(a.entity)}${a.summary && a.entity !== 'site_settings' ? ` <b>${esc(a.summary)}</b>` : ''}</span></li>`;
 
   /* =====================================================================

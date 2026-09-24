@@ -12,6 +12,17 @@ import { createClient } from 'npm:@supabase/supabase-js@2';
 import { cors, env, json, originAllowed, serviceKey, siteUrl } from '../_shared/http.ts';
 import { emailConfigured, launchLiveEmail, launchWelcomeEmail, loadAccent, sendEmail } from '../_shared/email.ts';
 
+// A failed email is easy to miss, so it goes in the admin's activity log with the reason.
+async function noteEmailProblem(what: string, err: unknown) {
+  console.error(what, err);
+  try {
+    await db.from('audit_log').insert({
+      email: 'System', action: 'update', entity: 'email',
+      summary: `${what}: ${String((err as Error)?.message ?? err).slice(0, 200)}`,
+    });
+  } catch { /* the log is a nicety, never a reason to fail the request */ }
+}
+
 const db = createClient(env('SUPABASE_URL'), serviceKey(), { auth: { persistSession: false } });
 const EMAIL = /^[^@\s]+@[^@\s]+\.[^@\s]{2,}$/;
 const PER_HOUR = 10;
@@ -80,7 +91,7 @@ Deno.serve(async req => {
           await sendEmail(row.email, m.subject, m.html, m.text);
           await db.from('launch_signups').update({ notified_at: new Date().toISOString() }).eq('id', row.id);
           sent++;
-        } catch (err) { console.error('launch email failed', row.email, err); failed.push(row.email); }
+        } catch (err) { await noteEmailProblem(`Launch email to ${row.email} failed`, err); failed.push(row.email); }
         await new Promise(r => setTimeout(r, 120));          // stay under Resend's rate limit
       }
       return json({ ok: true, sent, failed: failed.length }, 200, headers);
@@ -105,14 +116,16 @@ Deno.serve(async req => {
       if (error.code === '23505') return json({ ok: true, already: true }, 200, headers);  // added a moment ago
       throw error;
     }
+    let emailed = false;
     if (emailConfigured()) {
       try {
         await loadAccent(db);
         const m = launchWelcomeEmail(siteUrl(), unsubUrl(row.unsub_token));
         await sendEmail(email, m.subject, m.html, m.text);
-      } catch (err) { console.error('welcome email failed', err); }   // they're on the list either way
+        emailed = true;
+      } catch (err) { await noteEmailProblem('Launch list welcome email failed', err); }   // they're on the list either way
     }
-    return json({ ok: true }, 200, headers);
+    return json({ ok: true, emailed }, 200, headers);
   } catch (err) {
     if (err instanceof Bad) return json({ error: err.message }, 400, headers);
     console.error('launch-list failed', err);
