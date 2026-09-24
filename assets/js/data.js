@@ -20,6 +20,7 @@ const STORE = Object.freeze({
            builder: 'assets/brand/seventh-boar.webp',
            // transparent version of the wordmark, used as the stencil for the giant footer logo
            wordmarkMask: 'assets/brand/spxtr-wordmark-mask.png' },
+  builderUrl: 'https://seventhboar.com',   // the studio credit links here
   badges: ['New', 'Bestseller', 'Limited', 'Low stock', 'Sale'],
 });
 
