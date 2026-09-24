@@ -20,12 +20,17 @@ export async function loadAccent(db: { from: (t: string) => any }) {
   } catch { /* keep the defaults */ }
 }
 
-export async function sendEmail(to: string, subject: string, html: string, text?: string) {
+// Which address an email comes from. Orders use EMAIL_FROM. The launch list can use its own
+// address (LAUNCH_EMAIL_FROM) so shop mail and announcements can sit on different domains.
+export const senderFor = (kind: 'order' | 'launch' = 'order') =>
+  (kind === 'launch' ? Deno.env.get('LAUNCH_EMAIL_FROM') : '') || Deno.env.get('EMAIL_FROM');
+
+export async function sendEmail(to: string, subject: string, html: string, text?: string, from?: string) {
   const res = await fetch('https://api.resend.com/emails', {
     method: 'POST',
     headers: { Authorization: `Bearer ${Deno.env.get('RESEND_API_KEY')}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      from: Deno.env.get('EMAIL_FROM'),
+      from: from || Deno.env.get('EMAIL_FROM'),
       to: [to],
       subject,
       html,

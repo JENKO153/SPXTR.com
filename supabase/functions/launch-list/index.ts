@@ -10,7 +10,7 @@
 
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { cors, env, json, originAllowed, serviceKey, siteUrl } from '../_shared/http.ts';
-import { emailConfigured, launchLiveEmail, launchWelcomeEmail, loadAccent, sendEmail } from '../_shared/email.ts';
+import { emailConfigured, launchLiveEmail, launchWelcomeEmail, loadAccent, sendEmail, senderFor } from '../_shared/email.ts';
 
 // A failed email is easy to miss, so it goes in the admin's activity log with the reason.
 async function noteEmailProblem(what: string, err: unknown) {
@@ -88,7 +88,7 @@ Deno.serve(async req => {
       for (const row of list) {
         try {
           const m = launchLiveEmail(siteUrl(), unsubUrl(row.unsub_token), headline || undefined, message || undefined);
-          await sendEmail(row.email, m.subject, m.html, m.text);
+          await sendEmail(row.email, m.subject, m.html, m.text, senderFor('launch'));
           await db.from('launch_signups').update({ notified_at: new Date().toISOString() }).eq('id', row.id);
           sent++;
         } catch (err) { await noteEmailProblem(`Launch email to ${row.email} failed`, err); failed.push(row.email); }
@@ -121,7 +121,7 @@ Deno.serve(async req => {
       try {
         await loadAccent(db);
         const m = launchWelcomeEmail(siteUrl(), unsubUrl(row.unsub_token));
-        await sendEmail(email, m.subject, m.html, m.text);
+        await sendEmail(email, m.subject, m.html, m.text, senderFor('launch'));
         emailed = true;
       } catch (err) { await noteEmailProblem('Launch list welcome email failed', err); }   // they're on the list either way
     }

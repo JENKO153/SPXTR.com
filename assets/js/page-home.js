@@ -102,8 +102,11 @@ function renderHome() {
   if (ig) { $('#ig-handle').target = '_blank'; $('#ig-handle').rel = 'noopener noreferrer'; }
 }
 
-// The banner video, if one is set and the visitor hasn't asked for less movement. The photo
-// stays underneath, so there's always something to look at while the video loads (or if it can't).
+// The banner video, if one is set and the visitor hasn't asked for less movement. The photo stays
+// underneath, so there's always something to look at while the video loads (or if it can't play).
+// Safari on iPhone and iPad is fussy: it won't always report the video as ready until playback has
+// been asked for, and it refuses autoplay outright in Low Power Mode. So we ask it to play straight
+// away, show the video as soon as it has a frame, and try once more after the first tap if needed.
 function heroVideo(h) {
   const el = $('#hero-video');
   if (!el) return;
@@ -111,15 +114,23 @@ function heroVideo(h) {
   const saver = navigator.connection?.saveData;
   const src = h.videoOn === false ? '' : safeVideo(h.video);
   if (!src || quiet || saver || PREVIEW) { el.hidden = true; el.removeAttribute('src'); el.load?.(); return; }
-  if (el.dataset.src !== src) {
-    el.dataset.src = src;
-    el.src = src;
-    el.preload = 'auto';
-    el.addEventListener('error', () => { el.hidden = true; }, { once: true });
-    // Only swap it in once it can actually play, so nobody sees a black box.
-    el.addEventListener('canplay', () => { el.hidden = false; el.play?.().catch(() => { el.hidden = true; }); }, { once: true });
-    el.load();
-  }
+  if (el.dataset.src === src) return;
+  el.dataset.src = src;
+  el.muted = true;                                   // must be set before play(), not just in the markup
+  el.src = src;
+  el.load();
+
+  const show = () => { if (el.readyState >= 2) el.hidden = false; };
+  const tryPlay = () => el.play?.().then(show, () => {});
+  ['loadeddata', 'canplay', 'playing'].forEach(ev => el.addEventListener(ev, () => { show(); tryPlay(); }));
+  el.addEventListener('error', () => { el.hidden = true; }, { once: true });
+  tryPlay();
+
+  // A tap anywhere is enough for Safari to allow it, if it refused on load.
+  const onTouch = () => { if (el.paused) tryPlay(); };
+  ['touchstart', 'click'].forEach(ev => document.addEventListener(ev, onTouch, { once: true, passive: true }));
+  // Coming back to the tab pauses and resumes media on iOS.
+  document.addEventListener('visibilitychange', () => { if (!document.hidden && el.paused && !el.hidden) tryPlay(); });
 }
 const safeVideo = u => (/^(https:\/\/|assets\/video\/[a-z0-9._-]+\.(mp4|webm))$/i.test(u || '') ? u : '');
 
