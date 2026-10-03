@@ -341,11 +341,12 @@ input, select { font: inherit; color: inherit; }
 .footer .logo__text { font-size: 64px; }
 .footer .logo__ghost { width: 50px; height: 60px; }
 /* Giant footer wordmark: the client's artwork used as a luminance mask, so its white letters take this colour */
-.footer__giant { width: min(100% - 2 * var(--gutter), 1500px); aspect-ratio: 900 / 480; margin: 40px auto -2px; background: var(--surface-2);
+.footer__giant { width: min(100% - 2 * var(--gutter), clamp(440px, 66vw, 1160px)); aspect-ratio: 900 / 480; margin: 40px auto -2px; background: var(--surface-2);
   -webkit-mask-position: center; mask-position: center; -webkit-mask-size: contain; mask-size: contain;
   -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; }
-  /* mask-image is set inline so its path resolves from the page. It's a transparent PNG: Safari (iPhone/iPad)
-     only reads a mask's transparency, so a black-and-white JPG showed as a solid grey box there. */
+  /* mask-image is set inline so its path resolves from the page. It is a transparent SVG traced
+     from the artwork: at this size a bitmap went soft on a big screen, and Safari reads only a
+     mask's transparency, so a black-and-white JPG showed there as a solid grey box. */
 .footer h5 { color: var(--hot); margin: 0 0 18px; font: 500 12px var(--mono); letter-spacing: .12em; text-transform: uppercase; }
 .footer ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; font: 600 16px var(--cond); letter-spacing: .08em; text-transform: uppercase; }
 .footer a:hover { color: var(--bone); }
@@ -772,45 +773,40 @@ body.soon::after { content: ''; position: fixed; right: -12%; bottom: -10%; widt
 
 
 /* ---------- buttons fill too ----------
-   The same pour as the footer wordmark, at button size: the colour rises through the shape with
-   a wave on its surface. The button's own clip-path cuts the corners, so the liquid takes the
-   shape with it. It sits above the background and below the label (isolate + z-index: -1), which
-   needs no change to the markup.
-   A solid button fills with bone, a ghost button with the brand colour: either way the label
-   stays readable the whole way up. */
+   The same pour as the footer wordmark, at button size. One element does the whole job: its top
+   edge is cut into a wave by a mask, the rest of it is solid, so the surface can never drift out
+   of line with the liquid. It sits above the button's background and below the label, which needs
+   no change to the markup.
+
+   A solid button fills with bone, a ghost button with the brand colour, and the fill stops just
+   short of the top so the wave is on show the whole time, not only during the pour. */
 .motion .btn { position: relative; overflow: hidden; isolation: isolate; }
 .motion .btn::before {
-  content: ''; position: absolute; z-index: -1; left: -20%; right: -20%; bottom: -2px; height: 130%;
+  content: ''; position: absolute; z-index: -1; left: -20%; right: -20%; bottom: 0;
+  height: calc(100% + 12px);
   background: var(--bone);
+  -webkit-mask-image: var(--wave), linear-gradient(#000, #000);
+          mask-image: var(--wave), linear-gradient(#000, #000);
+  -webkit-mask-size: 54px 12px, 100% calc(100% - 11px);
+          mask-size: 54px 12px, 100% calc(100% - 11px);
+  -webkit-mask-position: 0 top, 0 bottom;
+          mask-position: 0 top, 0 bottom;
+  -webkit-mask-repeat: repeat-x, no-repeat;
+          mask-repeat: repeat-x, no-repeat;
   transform: translate3d(0, 100%, 0);
   transition: transform .5s cubic-bezier(.33, .9, .3, 1);
+  animation: spx-crest-c 2.2s linear infinite;      /* the crests travel along the surface */
 }
-.motion .btn::after {
-  content: ''; position: absolute; z-index: -1; left: -20%; right: -20%; height: 9px; bottom: calc(130% - 3px);
-  background: var(--bone);
-  -webkit-mask-image: var(--wave); mask-image: var(--wave);
-  -webkit-mask-repeat: repeat-x; mask-repeat: repeat-x;
-  -webkit-mask-size: 86px 100%; mask-size: 86px 100%;
-  -webkit-mask-position: 0 bottom; mask-position: 0 bottom;
-  transform: translate3d(0, 100%, 0);
-  transition: transform .5s cubic-bezier(.33, .9, .3, 1);
-  /* The crests travel by moving the pattern, leaving transform free to park and raise the wave. */
-  animation: spx-crest-c 2.2s linear infinite;
-}
-.motion .btn:is(:hover, .is-held)::before { transform: translate3d(0, 0, 0); }
-.motion .btn:is(:hover, .is-held)::after { transform: translate3d(0, 0, 0); }
-.motion .btn:not(:hover):not(.is-held)::before,
-.motion .btn:not(:hover):not(.is-held)::after { transition: transform .32s cubic-bezier(.5, 0, .75, .4); }
+.motion .btn:is(:hover, .is-held)::before { transform: translate3d(0, 6px, 0); }
+.motion .btn:not(:hover):not(.is-held)::before { transition: transform .32s cubic-bezier(.5, 0, .75, .4); }
 /* Ghost buttons pour the brand colour instead. */
 .motion .btn--ghost::before { background: var(--hot); }
-.motion .btn--ghost::after { background: var(--hot); }
+.motion .btn--light::before { background: var(--hot); }
 /* The background no longer jumps on hover: the liquid does that job. */
 .motion .btn:is(:hover, .is-held) { background: var(--hot); }
 .motion .btn--ghost:is(:hover, .is-held) { background: transparent; }
 .motion .btn--light:is(:hover, .is-held) { background: var(--bone); }
-.motion .btn--light::before { background: var(--hot); }
-.motion .btn--light::after { background: var(--hot); }
-@keyframes spx-crest-c { to { -webkit-mask-position-x: -86px; mask-position-x: -86px; } }
+@keyframes spx-crest-c { to { -webkit-mask-position: -54px top, 0 bottom; mask-position: -54px top, 0 bottom; } }
 
 /* ---------- hover and press ----------
    These are wanted whether or not the reveal system is running, so they sit outside .motion

@@ -19,7 +19,9 @@ const STORE = Object.freeze({
            // Seventh Boar Development — the studio credit on the coming soon page
            builder: 'assets/brand/seventh-boar.webp',
            // transparent version of the wordmark, used as the stencil for the giant footer logo
-           wordmarkMask: 'assets/brand/spxtr-wordmark-mask.png' },
+           // Vector, traced from the original artwork: the footer mark is huge on a big screen,
+           // and a bitmap went soft once it was scaled past its own size.
+           wordmarkMask: 'assets/brand/spxtr-wordmark.svg' },
   builderUrl: 'https://seventhboar.com',   // the studio credit links here
   badges: ['New', 'Bestseller', 'Limited', 'Low stock', 'Sale'],
 });
