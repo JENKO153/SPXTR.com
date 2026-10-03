@@ -40,7 +40,10 @@
   /* Backdrops that drift at their own pace as they pass, so the page has layers rather than
      sliding as one sheet. Each is moved relative to its own position on screen, so nothing
      jumps when you land mid-page. */
-  const LAYERS = '.hero__img, .event__bg img, .newsletter__bg img, .page-head__bg, .tested__imgs img, #ig img';
+  // Only full-bleed backdrops drift: they are taller than their frame, so there is room to move
+  // into. Photos in fixed frames (the crew strip, the crash-tested shots) are left alone, because
+  // shifting them inside their boxes just drags their edges into view.
+  const LAYERS = '.hero__img, .event__bg img, .newsletter__bg img, .page-head__bg';
   let layers = [];
   const measure = () => { layers = innerWidth >= 900 ? [...document.querySelectorAll(LAYERS)] : []; };
   measure();

@@ -623,7 +623,6 @@ body.soon::after { content: ''; position: fixed; right: -12%; bottom: -10%; widt
    little taller than its frame so there is something to move into. */
 .motion .hero__img { will-change: transform; }
 .motion .event__bg img, .motion .newsletter__bg img, .motion .page-head__bg { will-change: transform; height: 118%; top: -9%; }
-.motion .tested__imgs img, .motion #ig img { will-change: transform; }
 
 /* The header tightens once you leave the top of the page. */
 .motion .header { transition: height .35s var(--ease-out), background-color .35s ease, border-color .35s ease, backdrop-filter .35s ease; }
@@ -781,32 +780,34 @@ body.soon::after { content: ''; position: fixed; right: -12%; bottom: -10%; widt
    A solid button fills with bone, a ghost button with the brand colour, and the fill stops just
    short of the top so the wave is on show the whole time, not only during the pour. */
 .motion .btn { position: relative; overflow: hidden; isolation: isolate; }
+.motion .btn { --pour: var(--bone); }          /* what this button fills with */
 .motion .btn::before {
   content: ''; position: absolute; z-index: -1; left: -20%; right: -20%; bottom: 0;
   height: calc(100% + 12px);
-  background: var(--bone);
+  background: var(--pour);
   -webkit-mask-image: var(--wave), linear-gradient(#000, #000);
           mask-image: var(--wave), linear-gradient(#000, #000);
-  -webkit-mask-size: 54px 12px, 100% calc(100% - 11px);
-          mask-size: 54px 12px, 100% calc(100% - 11px);
+  -webkit-mask-size: 118px 12px, 100% calc(100% - 11px);
+          mask-size: 118px 12px, 100% calc(100% - 11px);
   -webkit-mask-position: 0 top, 0 bottom;
           mask-position: 0 top, 0 bottom;
   -webkit-mask-repeat: repeat-x, no-repeat;
           mask-repeat: repeat-x, no-repeat;
   transform: translate3d(0, 100%, 0);
   transition: transform .5s cubic-bezier(.33, .9, .3, 1);
-  animation: spx-crest-c 2.2s linear infinite;      /* the crests travel along the surface */
+  animation: spx-crest-c 3.4s linear infinite;      /* the crests travel along the surface */
 }
 .motion .btn:is(:hover, .is-held)::before { transform: translate3d(0, 6px, 0); }
 .motion .btn:not(:hover):not(.is-held)::before { transition: transform .32s cubic-bezier(.5, 0, .75, .4); }
-/* Ghost buttons pour the brand colour instead. */
-.motion .btn--ghost::before { background: var(--hot); }
-.motion .btn--light::before { background: var(--hot); }
+/* Each kind pours whatever its hover state used to turn, so buttons still read the same way
+   against whatever they sit on. */
+.motion .btn--ghost, .motion .btn--light, .motion .served .btn { --pour: var(--hot); }
 /* The background no longer jumps on hover: the liquid does that job. */
 .motion .btn:is(:hover, .is-held) { background: var(--hot); }
 .motion .btn--ghost:is(:hover, .is-held) { background: transparent; }
 .motion .btn--light:is(:hover, .is-held) { background: var(--bone); }
-@keyframes spx-crest-c { to { -webkit-mask-position: -54px top, 0 bottom; mask-position: -54px top, 0 bottom; } }
+.motion .served .btn:is(:hover, .is-held) { background: var(--ink); }   /* the liquid does the colour change */
+@keyframes spx-crest-c { to { -webkit-mask-position: -118px top, 0 bottom; mask-position: -118px top, 0 bottom; } }
 
 /* ---------- hover and press ----------
    These are wanted whether or not the reveal system is running, so they sit outside .motion
