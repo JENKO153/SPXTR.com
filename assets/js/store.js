@@ -356,7 +356,7 @@ function renderCart() {
     : `Free shipping <b>unlocked</b><div class="bar"><i style="width:100%"></i></div>`);
 
   $('.drawer__items').innerHTML = lines.length ? lines.map((l, i) => `
-    <div class="line-item">
+    <div class="line-item" style="--n:${i}">
       <img src="${imgSrc(l.p.images[0])}" alt="">
       <div>
         <h4>${esc(l.p.name)}</h4>

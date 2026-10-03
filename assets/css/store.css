@@ -591,6 +591,111 @@ body.soon::after { content: ''; position: fixed; right: -12%; bottom: -10%; widt
 .soon__by img { width: clamp(84px, 11vh, 112px); height: auto; }
 @media (max-width: 540px) { .soon__form .btn { width: 100%; } }
 
+/* =========================================================
+   MOTION
+   Driven by assets/js/motion.js, which puts .motion on <html>. Without it — script blocked,
+   or the visitor prefers less movement — none of this applies and the page is simply static.
+   Only transform and opacity are animated, so scrolling stays smooth on a phone.
+   ========================================================= */
+:root { --ease-out: cubic-bezier(.16, 1, .3, 1); --ease-soft: cubic-bezier(.33, 1, .68, 1); }
+
+/* Entrance: a short rise and fade. --step staggers children of a group. */
+.motion .rise { opacity: 0; transform: translate3d(0, 22px, 0); will-change: transform, opacity; }
+.motion .rise.in {
+  opacity: 1; transform: none; will-change: auto;
+  transition: opacity .7s var(--ease-soft), transform .9s var(--ease-out);
+  transition-delay: calc(var(--step, 0) * 70ms);
+}
+/* Headlines carry a touch more weight, so they move a little further and settle a little later. */
+.motion .section-head.rise { transform: translate3d(0, 30px, 0); }
+.motion .hero__inner.rise { transform: translate3d(0, 34px, 0); }
+
+/* Photos fade up as they load rather than popping in. */
+.motion img.lift { opacity: 0; transform: scale(1.02); }
+.motion img.lit { opacity: 1; transform: none; transition: opacity .8s var(--ease-soft), transform 1.2s var(--ease-out); }
+
+/* The banner drifts under the page as you scroll (motion.js sets the transform). */
+.motion .hero__img { will-change: transform; }
+
+/* The header tightens once you leave the top of the page. */
+.motion .header { transition: height .35s var(--ease-out), background-color .35s ease, border-color .35s ease, backdrop-filter .35s ease; }
+.motion.scrolled .header { background: rgba(10, 10, 10, .82); backdrop-filter: blur(10px); border-bottom-color: var(--line-2); }
+.motion .header__row { transition: height .35s var(--ease-out); }
+.motion.scrolled .header__row { height: 62px; }
+
+/* The hero lines arrive one after another, like a title sequence. */
+.motion .hero__inner > .rise.in { transition-delay: calc(var(--step, 0) * 90ms); }
+
+/* The rule under a section heading draws itself in. */
+.motion .section-head { border-bottom-color: transparent; position: relative; }
+.motion .section-head::after {
+  content: ''; position: absolute; left: 0; right: 0; bottom: -1px; height: 1px; background: var(--line);
+  transform: scaleX(0); transform-origin: left; transition: transform 1.1s var(--ease-out) .15s;
+}
+.motion .section-head.in::after { transform: scaleX(1); }
+
+/* Countdown digits drop as they change. */
+@keyframes spx-tick { 0% { transform: translateY(-55%); opacity: 0; } 100% { transform: none; opacity: 1; } }
+.motion .clock__row b.tick { animation: spx-tick .42s var(--ease-out); }
+
+/* The cart slides with a little more ease, and its lines follow it in. */
+.drawer { transition: transform .5s var(--ease-out); }
+.motion .drawer.open .line-item { animation: spx-line .5s var(--ease-out) backwards; animation-delay: calc(var(--n, 0) * 60ms); }
+@keyframes spx-line { from { opacity: 0; transform: translateX(22px); } }
+
+/* Moving between pages: a short cross-fade where the browser supports it. */
+@view-transition { navigation: auto; }
+::view-transition-old(root) { animation: spx-fade-out .18s ease forwards; }
+::view-transition-new(root) { animation: spx-fade-in .32s var(--ease-soft) forwards; }
+@keyframes spx-fade-out { to { opacity: 0; } }
+@keyframes spx-fade-in { from { opacity: 0; } }
+
+/* ---------- hover and press ----------
+   These are wanted whether or not the reveal system is running, so they sit outside .motion
+   and are switched off wholesale by the reduced-motion rule at the end of this file. */
+.btn { transition: background .2s, color .2s, transform .18s var(--ease-out), box-shadow .25s; }
+.btn:hover { transform: translateY(-2px); }
+.btn:active { transform: translateY(0) scale(.985); }
+.btn--ghost:hover { box-shadow: inset 0 0 0 1.5px var(--bone); }
+
+.card { transition: transform .4s var(--ease-out); }
+.card:hover { transform: translateY(-6px); }
+.card__media { transition: box-shadow .4s ease; }
+.card:hover .card__media { box-shadow: 0 24px 50px -24px rgba(0, 0, 0, .9); }
+.card__name { transition: color .2s; }
+.card:hover .card__name { color: var(--hot); }
+
+.rider__img img, .disc img { transition: transform 1.1s var(--ease-out), filter .5s ease; }
+.rider:hover .rider__img img, .disc:hover img { transform: scale(1.05); }
+
+/* Navigation: the underline grows out from the left instead of appearing. */
+.nav a::after {
+  content: ''; position: absolute; left: 0; bottom: 0; height: 2px; width: 100%;
+  background: var(--hot); transform: scaleX(0); transform-origin: left;
+  transition: transform .35s var(--ease-out);
+}
+.nav a:hover::after, .nav a.active::after { transform: scaleX(1); }
+
+.link-arrow { transition: color .2s, border-color .2s; }
+.link-arrow svg { transition: transform .3s var(--ease-out); }
+.link-arrow:hover svg { transform: translateX(5px); }
+
+.tab { transition: background .25s, color .25s; }
+.icon-btn svg { transition: transform .3s var(--ease-out); }
+.icon-btn:hover svg { transform: scale(1.12); }
+
+/* The ticker stops while you're reading it. */
+.marquee:hover .marquee__track, .announce:hover .announce__track { animation-play-state: paused; }
+
+/* The countdown ticks over rather than cutting. */
+.motion .clock__row b { transition: transform .35s var(--ease-out), color .35s ease; }
+
+/* Filters and form rows answer back a little. */
+.check { transition: color .2s; }
+.check:hover { color: var(--bone); }
+.size-grid button, .size-row button, .quick__sizes button { transition: background .2s, color .2s, border-color .2s, transform .18s var(--ease-out); }
+.size-grid button:hover, .size-row button:hover, .quick__sizes button:hover { transform: translateY(-2px); }
+
 /* ---------- big screens ----------
    The layout is capped at --max so lines of text stay readable. On very wide monitors the cap
    is loosened a little, the gutters open up and the grids show another column, so the page
