@@ -15,6 +15,12 @@
   if (still || preview || !('IntersectionObserver' in window)) return;
   root.classList.add('motion');
 
+  /* A hairline across the very top that fills as you move down the page. Made first, because
+     the scroll handler runs as soon as it is wired up. */
+  const line = document.createElement('div');
+  line.className = 'read-line';
+  document.body.appendChild(line);
+
   /* ---------------- entrance reveals ----------------
      These come in on their own; the groups bring their children in one after another, which
      reads as deliberate rather than mechanical. */
@@ -31,6 +37,15 @@
   ];
 
   const seen = new WeakSet();
+  /* Backdrops that drift at their own pace as they pass, so the page has layers rather than
+     sliding as one sheet. Each is moved relative to its own position on screen, so nothing
+     jumps when you land mid-page. */
+  const LAYERS = '.hero__img, .event__bg img, .newsletter__bg img, .page-head__bg, .tested__imgs img, #ig img';
+  let layers = [];
+  const measure = () => { layers = innerWidth >= 900 ? [...document.querySelectorAll(LAYERS)] : []; };
+  measure();
+  setTimeout(measure, 1200);                       // after the page has drawn its content
+
   let net;                                  // the safety-net timer (see catchUp, further down)
   function armNet() { if (!net) net = setInterval(catchUp, 1200); }
   const io = new IntersectionObserver(entries => {
@@ -118,7 +133,7 @@
   /* ---------------- run, and keep up ----------------
      Every page draws its content after load, and the shop redraws on every filter, so watch
      for new content instead of running once and hoping. */
-  const sweep = () => { scan(); document.querySelectorAll(FADE_IN).forEach(fade); armNet(); };
+  const sweep = () => { scan(); document.querySelectorAll(FADE_IN).forEach(fade); armNet(); measure(); };
   sweep();
   let queued;
   new MutationObserver(() => { clearTimeout(queued); queued = setTimeout(sweep, 50); })
@@ -135,8 +150,13 @@
     requestAnimationFrame(() => {
       const y = window.scrollY;
       root.classList.toggle('scrolled', y > 40);
-      const img = innerWidth >= 900 && document.querySelector('.hero__img');
-      if (img) img.style.transform = `translate3d(0, ${(Math.min(y, innerHeight) * 0.16).toFixed(1)}px, 0)`;
+      for (const el of layers) {
+        const r = el.getBoundingClientRect();
+        if (r.bottom < -200 || r.top > innerHeight + 200) continue;        // off screen: leave it
+        const depth = el.classList.contains('hero__img') ? 0.16 : 0.07;
+        const mid = (r.top + r.height / 2 - innerHeight / 2) / innerHeight; // -1 … 1 as it passes
+        el.style.transform = `translate3d(0, ${(-mid * innerHeight * depth).toFixed(1)}px, 0)`;
+      }
       catchUp();
       afterScroll(y);
       ticking = false;
@@ -183,7 +203,7 @@
      than a rectangle growing. Mouse and trackpad only: on a touchscreen there is no pointer to
      follow, and a tilt that only fires on tap feels broken.
      One listener for the whole page, and the work happens on an animation frame. */
-  const TILT = '.card, .rider, .report, .rv-card';
+  const TILT = '.card, .rider, .report, .rv-card, .disc a, .cat, .perks > div, .line-item, .btn, .link-arrow';
   const fine = matchMedia('(hover: hover) and (pointer: fine)').matches;
   let tilted = null, pending = null;
 
@@ -194,12 +214,13 @@
     const r = el.getBoundingClientRect();
     const px = (x - r.left) / r.width - 0.5;          // -0.5 … 0.5 from the middle
     const py = (y - r.top) / r.height - 0.5;
-    el.style.setProperty('--rx', `${(-py * 7).toFixed(2)}deg`);
-    el.style.setProperty('--ry', `${(px * 9).toFixed(2)}deg`);
+    const small = el.classList.contains('btn') || el.classList.contains('link-arrow');
+    el.style.setProperty('--rx', `${(-py * (small ? 10 : 7)).toFixed(2)}deg`);
+    el.style.setProperty('--ry', `${(px * (small ? 14 : 9)).toFixed(2)}deg`);
     el.style.setProperty('--mx', `${((x - r.left) / r.width * 100).toFixed(1)}%`);
     el.style.setProperty('--my', `${((y - r.top) / r.height * 100).toFixed(1)}%`);
-    el.style.setProperty('--px', `${(px * 10).toFixed(1)}px`);
-    el.style.setProperty('--py', `${(py * 10).toFixed(1)}px`);
+    el.style.setProperty('--px', `${(px * (small ? 6 : 10)).toFixed(1)}px`);
+    el.style.setProperty('--py', `${(py * (small ? 6 : 10)).toFixed(1)}px`);
   }
 
   function release(el) {
@@ -223,12 +244,6 @@
     // Leaving the window, or scrolling the card away, should let it settle back.
     addEventListener('pointerleave', () => { if (tilted) { release(tilted); tilted = null; } });
   }
-
-  /* ---------------- the read line ----------------
-     A hairline across the very top that fills as you move down the page. */
-  const line = document.createElement('div');
-  line.className = 'read-line';
-  document.body.appendChild(line);
 
   /* ---------------- tickers ----------------
      The strips lean into the direction you are scrolling and settle back to their own pace when
@@ -255,4 +270,9 @@
     tickers(1 + lean);
     if (!leaning) { leaning = true; requestAnimationFrame(settle); }
   }
+
+  /* Wired last, so everything it touches already exists. */
+  addEventListener('scroll', onScroll, { passive: true });
+  addEventListener('resize', () => { measure(); onScroll(); }, { passive: true });
+  onScroll();
 })();
