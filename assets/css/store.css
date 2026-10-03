@@ -29,6 +29,10 @@
   --mono: 'JetBrains Mono', ui-monospace, monospace;
   --goth: 'Metal Mania', 'UnifrakturCook', serif;
   --ease: cubic-bezier(.2, .7, .2, 1);
+  /* A real wave: a smooth sine drawn as a mask, so it takes the brand colour and tiles with no
+     seam. Two copies at different widths and speeds slide across each other, which is what makes
+     a surface look like moving liquid rather than a repeating shape. */
+  --wave: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 100' preserveAspectRatio='none'%3E%3Cpath d='M0 52 C 46 16 94 16 140 52 S 234 88 280 52 S 374 16 400 34 L400 100 L0 100 Z' fill='%23fff'/%3E%3C/svg%3E");
   --noise: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 .55 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
 }
 
@@ -81,15 +85,15 @@ input, select { font: inherit; color: inherit; }
 
 /* ---------- buttons ---------- */
 .btn { --cut: 12px; display: inline-flex; align-items: center; justify-content: center; gap: 10px; height: 54px; padding: 0 30px; background: var(--hot); color: var(--ink); font: 700 16px/1 var(--cond); letter-spacing: .12em; text-transform: uppercase; clip-path: polygon(0 0, calc(100% - var(--cut)) 0, 100% var(--cut), 100% 100%, var(--cut) 100%, 0 calc(100% - var(--cut))); transition: background .2s, color .2s; }
-.btn:hover { background: var(--bone); }
+.btn:is(:hover, .is-held) { background: var(--bone); }
 .btn--ghost { background: transparent; color: var(--bone); box-shadow: inset 0 0 0 1.5px var(--line-2); clip-path: none; }
-.btn--ghost:hover { background: var(--bone); color: var(--ink); box-shadow: none; }
+.btn--ghost:is(:hover, .is-held) { color: var(--ink); box-shadow: none; }
 .btn--light { background: var(--bone); color: var(--ink); }
-.btn--light:hover { background: var(--hot); }
+.btn--light:is(:hover, .is-held) { background: var(--hot); }
 .btn--block { width: 100%; }
 .link-arrow { display: inline-flex; gap: 10px; align-items: center; font: 600 15px/1 var(--cond); letter-spacing: .12em; text-transform: uppercase; color: var(--hot); padding-bottom: 5px; border-bottom: 1.5px solid currentColor; }
 .link-arrow svg { transition: transform .25s var(--ease); }
-.link-arrow:hover svg { transform: translateX(4px); }
+.link-arrow:is(:hover, .is-held) svg { transform: translateX(4px); }
 
 /* ---------- announcement ---------- */
 .announce { background: var(--hot); color: var(--ink); font: 500 12px/36px var(--mono); letter-spacing: .06em; text-transform: uppercase; overflow: hidden; white-space: nowrap; }
@@ -112,7 +116,7 @@ input, select { font: inherit; color: inherit; }
 .nav a.active::after { content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 2px; background: var(--hot); }
 .header__icons { display: flex; justify-content: flex-end; gap: 4px; align-items: center; }
 .icon-btn { width: 42px; height: 42px; display: grid; place-items: center; position: relative; color: var(--bone); transition: color .2s; }
-.icon-btn:hover { color: var(--hot); }
+.icon-btn:is(:hover, .is-held) { color: var(--hot); }
 .icon-btn svg { width: 21px; height: 21px; }
 .bag-count { position: absolute; top: 3px; right: 1px; min-width: 18px; height: 18px; padding: 0 4px; background: var(--red); color: #fff; font: 600 11px/18px var(--mono); text-align: center; transform: scale(0); transition: transform .3s var(--ease); }
 .bag-count.show { transform: scale(1); }
@@ -174,10 +178,10 @@ input, select { font: inherit; color: inherit; }
 .cat { position: relative; overflow: hidden; background: var(--surface); min-height: 250px; }
 .cat:first-child { grid-row: span 2; }
 .cat img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; filter: saturate(.8) brightness(.8); transition: transform 1s var(--ease), filter .4s; }
-.cat:hover img { transform: scale(1.05); filter: saturate(.9) brightness(.9); }
+.cat:is(:hover, .is-held) img { transform: scale(1.05); filter: saturate(.9) brightness(.9); }
 .cat::after { content: ''; position: absolute; inset: 0; background: linear-gradient(0deg, rgba(14,16,12,.9), transparent 55%); }
 .cat .corners { opacity: 0; transition: opacity .3s, inset .3s var(--ease); inset: 20px; }
-.cat:hover .corners { opacity: 1; inset: 12px; }
+.cat:is(:hover, .is-held) .corners { opacity: 1; inset: 12px; }
 .cat__label { position: absolute; left: 22px; right: 22px; bottom: 20px; z-index: 3; display: flex; justify-content: space-between; align-items: flex-end; gap: 12px; }
 .cat__label .code { display: block; margin-bottom: 6px; }
 .cat__label h3 { font: 800 clamp(34px, 3.4vw, 52px)/.9 var(--stencil); text-transform: uppercase; color: var(--bone); margin: 0; }
@@ -189,9 +193,9 @@ input, select { font: inherit; color: inherit; }
 .card__media { position: relative; aspect-ratio: 4/5; overflow: hidden; background: var(--surface); }
 .card__media > a { display: block; height: 100%; }
 .card__media img { width: 100%; height: 100%; object-fit: cover; filter: saturate(.9); transition: transform 1s var(--ease); }
-.card:hover .card__media img { transform: scale(1.04); }
+.card:is(:hover, .is-held) .card__media img { transform: scale(1.04); }
 .card__media .corners { opacity: 0; transition: opacity .25s; }
-.card:hover .card__media .corners { opacity: 1; }
+.card:is(:hover, .is-held) .card__media .corners { opacity: 1; }
 .card__badge { position: absolute; top: 14px; left: 14px; z-index: 3; background: var(--bg); color: var(--hot); padding: 6px 9px; font: 500 11px/1 var(--mono); letter-spacing: .08em; text-transform: uppercase; border: 1px solid var(--line-2); }
 .card__badge.sale, .card__badge.low { background: var(--red); color: #fff; border-color: var(--red); }
 .card__badge.hot { background: var(--hot); color: var(--ink); border-color: var(--hot); }
@@ -199,11 +203,11 @@ input, select { font: inherit; color: inherit; }
 .soldout-tag { position: absolute; inset: 0; z-index: 2; display: grid; place-items: center; pointer-events: none; }
 .soldout-tag span { font: 900 34px/1 var(--stencil); letter-spacing: .08em; text-transform: uppercase; color: var(--bone); border: 3px solid var(--bone); padding: 8px 16px 6px; transform: rotate(-8deg); }
 .card__wish { position: absolute; top: 10px; right: 10px; z-index: 3; width: 36px; height: 36px; display: grid; place-items: center; background: rgba(14,16,12,.7); color: var(--bone); opacity: 0; transition: opacity .25s; }
-.card:hover .card__wish, .card__wish.on { opacity: 1; }
+.card:is(:hover, .is-held) .card__wish, .card__wish.on { opacity: 1; }
 .card__wish svg { width: 17px; height: 17px; }
 .card__wish.on svg { fill: var(--red); stroke: var(--red); }
 .quick { position: absolute; left: 0; right: 0; bottom: 0; z-index: 3; background: rgba(14,16,12,.94); border-top: 1px solid var(--hot); padding: 12px 14px 14px; transform: translateY(100%); transition: transform .3s var(--ease); }
-.card:hover .quick, .card:focus-within .quick { transform: none; }
+.card:is(:hover, .is-held) .quick, .card:focus-within .quick { transform: none; }
 .quick__label { font: 500 11px var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--hot); margin-bottom: 8px; }
 .quick__sizes { display: flex; flex-wrap: wrap; gap: 6px; }
 .quick__sizes button { min-width: 40px; height: 32px; padding: 0 8px; border: 1px solid var(--line-2); font: 600 14px var(--cond); letter-spacing: .06em; color: var(--bone); transition: all .15s; }
@@ -236,12 +240,12 @@ input, select { font: inherit; color: inherit; }
 .disc a:first-child { clip-path: polygon(0 0, 100% 0, 86% 100%, 0 100%); margin-left: 0; }
 .disc a:last-child { clip-path: polygon(14% 0, 100% 0, 100% 100%, 0 100%); margin-right: 0; }
 .disc img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; filter: grayscale(.85) brightness(.6); transition: filter .5s, transform 1s var(--ease); }
-.disc a:hover img { filter: grayscale(0) brightness(.85); transform: scale(1.06); }
+.disc a:is(:hover, .is-held) img { filter: grayscale(0) brightness(.85); transform: scale(1.06); }
 .disc a::after { content: ''; position: absolute; inset: 0; background: linear-gradient(0deg, rgba(10,10,10,.85), transparent 50%); }
 .disc__label { position: absolute; left: 18%; right: 8%; bottom: 22px; z-index: 2; }
 .disc__label .code { display: block; margin-bottom: 6px; }
 .disc__label h3 { font: 800 clamp(22px, 2.1vw, 40px)/.92 var(--stencil); text-transform: uppercase; margin: 0; color: var(--bone); transition: color .3s; overflow-wrap: anywhere; hyphens: auto; }
-.disc a:hover h3 { color: var(--hot); }
+.disc a:is(:hover, .is-held) h3 { color: var(--hot); }
 .disc a:first-child .disc__label { left: 10%; }
 
 /* ---------- team riders ---------- */
@@ -249,7 +253,7 @@ input, select { font: inherit; color: inherit; }
 .rider { position: relative; background: var(--surface); overflow: hidden; }
 .rider__img { position: relative; aspect-ratio: 3/4; overflow: hidden; }
 .rider__img img { width: 100%; height: 100%; object-fit: cover; filter: grayscale(1) contrast(1.1); transition: filter .5s, transform 1s var(--ease); }
-.rider:hover .rider__img img { filter: grayscale(0); transform: scale(1.04); }
+.rider:is(:hover, .is-held) .rider__img img { filter: grayscale(0); transform: scale(1.04); }
 .rider__num { position: absolute; right: 12px; top: 6px; z-index: 2; font: 900 88px/1 var(--stencil); color: transparent; -webkit-text-stroke: 2px var(--hot); }
 .rider__ig { display: inline-flex; align-items: center; gap: 7px; margin-bottom: 10px; font: 500 12px var(--mono); letter-spacing: .06em; color: var(--muted); }
 .rider__ig:hover { color: var(--hot); }
@@ -315,7 +319,7 @@ input, select { font: inherit; color: inherit; }
 .served h3 { font: 900 clamp(34px, 4vw, 56px)/.9 var(--stencil); text-transform: uppercase; margin: 0; }
 .served p { margin: 8px 0 0; font: 500 12px var(--mono); letter-spacing: .06em; text-transform: uppercase; opacity: .9; }
 .served .btn { background: var(--ink); color: var(--bone); }
-.served .btn:hover { background: var(--hot); color: var(--ink); }
+.served .btn:is(:hover, .is-held) { background: var(--hot); color: var(--ink); }
 
 /* ---------- newsletter ---------- */
 .newsletter { position: relative; overflow: hidden; isolation: isolate; text-align: center; }
@@ -656,21 +660,21 @@ body.soon::after { content: ''; position: fixed; right: -12%; bottom: -10%; widt
 /* A second photo sits behind the first and comes forward on hover, so the piece turns as you
    look at it. Only on products that have one. */
 .card__media .card__alt { position: absolute; inset: 0; opacity: 0; transform: scale(1.06); transition: opacity .55s var(--ease-soft), transform 1.2s var(--ease-out); }
-.card:hover .card__media .card__alt { opacity: 1; transform: scale(1); }
+.card:is(:hover, .is-held) .card__media .card__alt { opacity: 1; transform: scale(1); }
 /* Only fade the first photo out when there is a second one behind it to show. */
-.card:hover .card__media > a > img:first-of-type:has(+ .card__alt) { opacity: 0; transition: opacity .55s var(--ease-soft); }
+.card:is(:hover, .is-held) .card__media > a > img:first-of-type:has(+ .card__alt) { opacity: 0; transition: opacity .55s var(--ease-soft); }
 
 /* Page tiles keep their slanted grid: the shapes and overlaps are cut for fixed columns.
    The hover work is colour, the label and the tilt below. */
 .disc__label h3 { transition: color .3s, transform .5s var(--ease-out); }
-.disc a:hover .disc__label h3 { transform: translateY(-4px); }
+.disc a:is(:hover, .is-held) .disc__label h3 { transform: translateY(-4px); }
 .disc__label .code { transition: letter-spacing .5s var(--ease-out), color .3s; }
-.disc a:hover .disc__label .code { letter-spacing: .3em; color: var(--hot); }
+.disc a:is(:hover, .is-held) .disc__label .code { letter-spacing: .3em; color: var(--hot); }
 .disc__label::after {
   content: ''; display: block; height: 2px; width: 100%; margin-top: 10px; background: var(--hot);
   transform: scaleX(0); transform-origin: left; transition: transform .5s var(--ease-out);
 }
-.disc a:hover .disc__label::after { transform: scaleX(1); }
+.disc a:is(:hover, .is-held) .disc__label::after { transform: scaleX(1); }
 
 /* Headlines come up from behind their own edge. */
 .motion .line-mask { display: block; overflow: hidden; }
@@ -718,54 +722,115 @@ body.soon::after { content: ''; position: fixed; right: -12%; bottom: -10%; widt
 .footer__giant { position: relative; overflow: hidden; isolation: isolate; }
 .giant__liquid, .giant__wave { display: block; pointer-events: none; }
 
-@media (hover: hover) and (pointer: fine) {
-  .motion .giant__liquid {
+.motion .giant__liquid {
     position: absolute; left: -25%; right: -25%; bottom: -2%; height: 125%;
     background: var(--hot);
     transform: translate3d(0, 100%, 0);                   /* parked below the letters */
     transition: transform 2.4s cubic-bezier(.33, .9, .3, 1);   /* the pour */
     will-change: transform;
   }
-  .motion .footer__giant:hover .giant__liquid {
-    transform: translate3d(0, 0, 0);
-    transition: transform 2.4s cubic-bezier(.33, .9, .3, 1);
-  }
-  .motion .footer__giant:not(:hover) .giant__liquid {
-    transition: transform 1.5s cubic-bezier(.5, 0, .75, .4);   /* draining is quicker */
-  }
+.motion .footer__giant:is(:hover, .is-held) .giant__liquid {
+  transform: translate3d(0, 0, 0);
+  transition: transform 2.4s cubic-bezier(.33, .9, .3, 1);
+}
+.motion .footer__giant:not(:hover):not(.is-held) .giant__liquid {
+  transition: transform 1.5s cubic-bezier(.5, 0, .75, .4);     /* draining is quicker */
+}
 
-  /* The surface: a row of crests sitting on top of the liquid, sliding sideways for ever. */
+  /* The surface. Two sine waves of different widths slide across each other in opposite
+     directions, so the crests rise and fall against one another instead of marching along. The
+     whole surface rolls gently at the same time. */
   .motion .giant__wave {
-    position: absolute; left: 0; bottom: 100%; width: 200%; height: clamp(30px, 4vw, 70px);
-    background: radial-gradient(ellipse 50% 100% at 50% 100%, var(--hot) 99%, transparent 100%) repeat-x;
-    background-size: 12% 100%;
-    animation: spx-pour 3.2s linear infinite;
+    position: absolute; left: 0; bottom: 100%; width: 100%; height: clamp(34px, 4.4vw, 84px);
+    animation: spx-slosh 5.2s ease-in-out infinite alternate;
     will-change: transform;
   }
+  .motion .giant__wave::before, .motion .giant__wave::after {
+    content: ''; position: absolute; bottom: -2px; left: 0; height: 100%; width: 300%;
+    background: var(--hot);
+    -webkit-mask-image: var(--wave); mask-image: var(--wave);
+    -webkit-mask-repeat: repeat-x; mask-repeat: repeat-x;
+    -webkit-mask-position: 0 bottom; mask-position: 0 bottom;
+    will-change: transform;
+  }
+  .motion .giant__wave::before {
+    -webkit-mask-size: 520px 100%; mask-size: 520px 100%;
+    animation: spx-wave-a 7.5s linear infinite;
+  }
+  .motion .giant__wave::after {
+    -webkit-mask-size: 340px 74%; mask-size: 340px 74%;
+    opacity: .5;
+    animation: spx-wave-b 12s linear infinite;
+  }
+
+/* Each layer travels exactly one tile width, so the loop is seamless. */
+@keyframes spx-wave-a { to { transform: translate3d(-520px, 0, 0); } }
+@keyframes spx-wave-b { to { transform: translate3d(340px, 0, 0); } }
+@keyframes spx-slosh { from { transform: translate3d(0, 4px, 0); } to { transform: translate3d(0, -10px, 0); } }
+
+
+/* ---------- buttons fill too ----------
+   The same pour as the footer wordmark, at button size: the colour rises through the shape with
+   a wave on its surface. The button's own clip-path cuts the corners, so the liquid takes the
+   shape with it. It sits above the background and below the label (isolate + z-index: -1), which
+   needs no change to the markup.
+   A solid button fills with bone, a ghost button with the brand colour: either way the label
+   stays readable the whole way up. */
+.motion .btn { position: relative; overflow: hidden; isolation: isolate; }
+.motion .btn::before {
+  content: ''; position: absolute; z-index: -1; left: -20%; right: -20%; bottom: -2px; height: 130%;
+  background: var(--bone);
+  transform: translate3d(0, 100%, 0);
+  transition: transform .5s cubic-bezier(.33, .9, .3, 1);
 }
-@keyframes spx-pour { to { transform: translate3d(-12%, 0, 0); } }
+.motion .btn::after {
+  content: ''; position: absolute; z-index: -1; left: -20%; right: -20%; height: 9px; bottom: calc(130% - 3px);
+  background: var(--bone);
+  -webkit-mask-image: var(--wave); mask-image: var(--wave);
+  -webkit-mask-repeat: repeat-x; mask-repeat: repeat-x;
+  -webkit-mask-size: 86px 100%; mask-size: 86px 100%;
+  -webkit-mask-position: 0 bottom; mask-position: 0 bottom;
+  transform: translate3d(0, 100%, 0);
+  transition: transform .5s cubic-bezier(.33, .9, .3, 1);
+  /* The crests travel by moving the pattern, leaving transform free to park and raise the wave. */
+  animation: spx-crest-c 2.2s linear infinite;
+}
+.motion .btn:is(:hover, .is-held)::before { transform: translate3d(0, 0, 0); }
+.motion .btn:is(:hover, .is-held)::after { transform: translate3d(0, 0, 0); }
+.motion .btn:not(:hover):not(.is-held)::before,
+.motion .btn:not(:hover):not(.is-held)::after { transition: transform .32s cubic-bezier(.5, 0, .75, .4); }
+/* Ghost buttons pour the brand colour instead. */
+.motion .btn--ghost::before { background: var(--hot); }
+.motion .btn--ghost::after { background: var(--hot); }
+/* The background no longer jumps on hover: the liquid does that job. */
+.motion .btn:is(:hover, .is-held) { background: var(--hot); }
+.motion .btn--ghost:is(:hover, .is-held) { background: transparent; }
+.motion .btn--light:is(:hover, .is-held) { background: var(--bone); }
+.motion .btn--light::before { background: var(--hot); }
+.motion .btn--light::after { background: var(--hot); }
+@keyframes spx-crest-c { to { -webkit-mask-position-x: -86px; mask-position-x: -86px; } }
 
 /* ---------- hover and press ----------
    These are wanted whether or not the reveal system is running, so they sit outside .motion
    and are switched off wholesale by the reduced-motion rule at the end of this file. */
 .btn { transition: background .2s, color .2s, transform .18s var(--ease-out), box-shadow .25s; }
-.btn:hover { transform: translateY(-2px); }
+.btn:is(:hover, .is-held) { transform: translateY(-2px); }
 /* With a pointer to follow, a button leans and drifts towards it. */
 .motion .btn.tilt, .motion .link-arrow.tilt {
   transform: perspective(600px) rotateX(var(--rx, 0)) rotateY(var(--ry, 0)) translate3d(var(--px, 0), calc(var(--py, 0px) - 2px), 0);
 }
 .btn:active { transform: translateY(0) scale(.985); }
-.btn--ghost:hover { box-shadow: inset 0 0 0 1.5px var(--bone); }
+.btn--ghost:is(:hover, .is-held) { box-shadow: inset 0 0 0 1.5px var(--bone); }
 
 .card { transition: transform .4s var(--ease-out); }
-.card:hover { transform: translateY(-6px); }
+.card:is(:hover, .is-held) { transform: translateY(-6px); }
 .card__media { transition: box-shadow .4s ease; }
-.card:hover .card__media { box-shadow: 0 24px 50px -24px rgba(0, 0, 0, .9); }
+.card:is(:hover, .is-held) .card__media { box-shadow: 0 24px 50px -24px rgba(0, 0, 0, .9); }
 .card__name { transition: color .2s; }
-.card:hover .card__name { color: var(--hot); }
+.card:is(:hover, .is-held) .card__name { color: var(--hot); }
 
 .rider__img img { transition: transform 1.1s var(--ease-out), filter .5s ease; }
-.rider:hover .rider__img img { transform: scale(1.05); }
+.rider:is(:hover, .is-held) .rider__img img { transform: scale(1.05); }
 
 /* Navigation: the underline grows out from the left instead of appearing. */
 .nav a::after {
@@ -777,11 +842,11 @@ body.soon::after { content: ''; position: fixed; right: -12%; bottom: -10%; widt
 
 .link-arrow { transition: color .2s, border-color .2s; }
 .link-arrow svg { transition: transform .3s var(--ease-out); }
-.link-arrow:hover svg { transform: translateX(5px); }
+.link-arrow:is(:hover, .is-held) svg { transform: translateX(5px); }
 
 .tab { transition: background .25s, color .25s; }
 .icon-btn svg { transition: transform .3s var(--ease-out); }
-.icon-btn:hover svg { transform: scale(1.12); }
+.icon-btn:is(:hover, .is-held) svg { transform: scale(1.12); }
 
 /* The ticker stops while you're reading it. */
 .marquee:hover .marquee__track, .announce:hover .announce__track { animation-play-state: paused; }

@@ -204,7 +204,7 @@
      follow, and a tilt that only fires on tap feels broken.
      One listener for the whole page, and the work happens on an animation frame. */
   const TILT = '.card, .rider, .report, .rv-card, .disc a, .cat, .perks > div, .line-item, .btn, .link-arrow';
-  const fine = matchMedia('(hover: hover) and (pointer: fine)').matches;
+  const HOLD = TILT + ', .footer__giant';          // these also take the hover styling under a finger
   let tilted = null, pending = null;
 
   function applyTilt() {
@@ -223,27 +223,54 @@
     el.style.setProperty('--py', `${(py * (small ? 6 : 10)).toFixed(1)}px`);
   }
 
+  function aim(el, x, y) {
+    const had = pending;
+    pending = { el, x, y };
+    if (!had) requestAnimationFrame(applyTilt);
+  }
+
   function release(el) {
-    el.classList.remove('tilt');
+    el.classList.remove('tilt', 'is-held');
     ['--rx', '--ry', '--px', '--py'].forEach(v => el.style.removeProperty(v));
   }
 
-  if (fine) {
+  function hold(el, x, y, held) {
+    if (tilted && tilted !== el) release(tilted);
+    tilted = el;
+    if (!el) return;
+    el.classList.add('tilt');
+    el.classList.toggle('is-held', !!held);      // set every time: a device can have both a mouse and a screen
+    aim(el, x, y);
+  }
+
+  /* With a pointer: whatever it rests on leans towards it. */
+  if (matchMedia('(hover: hover) and (pointer: fine)').matches) {
     addEventListener('pointermove', e => {
-      const el = e.target.closest?.(TILT);
-      if (el !== tilted) {
-        if (tilted) release(tilted);
-        tilted = el;
-        if (el) el.classList.add('tilt');
-      }
-      if (!el) return;
-      const had = pending;
-      pending = { el, x: e.clientX, y: e.clientY };
-      if (!had) requestAnimationFrame(applyTilt);
+      if (e.pointerType === 'touch') return;
+      hold(e.target.closest?.(TILT) || null, e.clientX, e.clientY, false);
     }, { passive: true });
-    // Leaving the window, or scrolling the card away, should let it settle back.
     addEventListener('pointerleave', () => { if (tilted) { release(tilted); tilted = null; } });
   }
+
+  /* With a finger: the same thing happens to whatever is under it while it is down, and lets go
+     the moment the finger lifts. Scrolling is untouched — nothing here cancels the gesture. */
+  let dragging = false;
+  const under = (x, y) => document.elementFromPoint(x, y)?.closest(HOLD) || null;
+  addEventListener('pointerdown', e => {
+    if (e.pointerType !== 'touch') return;
+    dragging = true;
+    hold(under(e.clientX, e.clientY), e.clientX, e.clientY, true);
+  }, { passive: true });
+  addEventListener('pointermove', e => {
+    if (e.pointerType !== 'touch' || !dragging) return;
+    hold(under(e.clientX, e.clientY), e.clientX, e.clientY, true);
+  }, { passive: true });
+  const letGo = () => {
+    dragging = false;
+    pending = null;                               // drop any frame still waiting to be drawn
+    if (tilted) { release(tilted); tilted = null; }
+  };
+  ['pointerup', 'pointercancel'].forEach(ev => addEventListener(ev, letGo, { passive: true }));
 
   /* ---------------- tickers ----------------
      The strips lean into the direction you are scrolling and settle back to their own pace when
