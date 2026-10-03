@@ -883,6 +883,113 @@ body.soon::after { content: ''; position: fixed; right: -12%; bottom: -10%; widt
   .hero__sound span { display: none; }          /* the icon says it on a phone */
 }
 
+/* =========================================================
+   SEASONAL THEMES
+   A theme is one attribute on <html> (data-theme) set by store.js, and everything below is
+   decoration: if any of it failed the site would simply look like itself. Dates are set in
+   Admin -> Customise, and a theme can also be forced on from there.
+
+   The hats and webs are drawn here as plain shapes rather than loaded as artwork, so they stay
+   sharp at any size and cost nothing to fetch.
+   ========================================================= */
+:root {
+  /* A winter hat: swept cone, turned cuff, bobble. */
+  --hat-winter: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 76'%3E%3Cpath d='M12 56 C 20 22 52 2 84 12 C 72 30 52 44 32 57 Z' fill='%23C8252B'/%3E%3Crect x='4' y='52' width='54' height='17' rx='8.5' fill='%23F7F7F2'/%3E%3Ccircle cx='85' cy='12' r='10' fill='%23F7F7F2'/%3E%3C/svg%3E");
+  /* A pointed hat: brim, cone, band. */
+  --hat-pointed: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 84'%3E%3Cg stroke='%23EDEDE6' stroke-width='3' stroke-linejoin='round'%3E%3Cpath d='M50 6 C 57 28 64 50 75 68 L25 68 C 36 50 43 28 50 6 Z' fill='%2326262F'/%3E%3Cellipse cx='50' cy='70' rx='45' ry='10' fill='%231A1A22'/%3E%3C/g%3E%3Cpath d='M30 57 h40 v9 h-40 z' fill='%23E0661B'/%3E%3C/svg%3E");
+  /* A corner web: threads from the corner with cross strands. */
+  --cobweb: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 120'%3E%3Cg fill='none' stroke='%23F2F2EE' stroke-width='1.1' stroke-linecap='round'%3E%3Cpath d='M0 0 L120 40 M0 0 L95 95 M0 0 L40 120 M0 0 L118 10 M0 0 L10 118'/%3E%3Cpath d='M26 6 C 20 18 12 24 6 26'/%3E%3Cpath d='M52 14 C 40 36 26 48 14 52'/%3E%3Cpath d='M78 24 C 60 54 42 70 24 78'/%3E%3Cpath d='M104 34 C 80 72 56 92 34 104'/%3E%3C/g%3E%3C/svg%3E");
+}
+
+/* The layer everything seasonal lives on. */
+.season { position: fixed; inset: 0; z-index: 94; pointer-events: none; }
+
+/* ---------- Christmas ---------- */
+[data-theme="christmas"] .season {
+  background-image:
+    radial-gradient(1.7px 1.7px at 22% 12%, rgba(255, 255, 255, .95), transparent 60%),
+    radial-gradient(2.4px 2.4px at 68% 38%, rgba(255, 255, 255, .75), transparent 60%),
+    radial-gradient(1.2px 1.2px at 45% 76%, rgba(255, 255, 255, .85), transparent 60%);
+  background-size: 260px 260px, 340px 340px, 190px 190px;
+  animation: spx-snowfall 22s linear infinite;
+}
+@keyframes spx-snowfall {
+  to { background-position: 40px 260px, -70px 340px, 25px 190px; }
+}
+
+/* Snow settling along the top of anything panel-shaped. */
+[data-theme="christmas"] .card__media::before,
+[data-theme="christmas"] .rider__img::before,
+[data-theme="christmas"] .report::before,
+[data-theme="christmas"] .rv-card::before,
+[data-theme="christmas"] .disc a::after {
+  content: ''; position: absolute; left: -3px; right: -3px; top: -1px; height: 20px; z-index: 3;
+  background: #F7F7F2;
+  -webkit-mask-image: var(--wave); mask-image: var(--wave);
+  -webkit-mask-repeat: repeat-x; mask-repeat: repeat-x;
+  -webkit-mask-size: 170px 20px; mask-size: 170px 20px;
+  transform: scaleY(-1);                      /* flat on top, drifted edge hanging below */
+  filter: drop-shadow(0 -3px 3px rgba(0, 0, 0, .45));   /* reads as sitting on the panel */
+  pointer-events: none;
+}
+
+/* A drift along the bottom of the banner, where it would pile up. */
+[data-theme="christmas"] .hero::after {
+  content: ''; position: absolute; left: 0; right: 0; bottom: -1px; height: clamp(26px, 3vw, 46px); z-index: 2;
+  background: #F7F7F2;
+  -webkit-mask-image: var(--wave); mask-image: var(--wave);
+  -webkit-mask-repeat: repeat-x; mask-repeat: repeat-x;
+  -webkit-mask-size: 420px 100%; mask-size: 420px 100%;
+  -webkit-mask-position: 0 bottom; mask-position: 0 bottom;
+  pointer-events: none;
+}
+[data-theme="christmas"] .disc a::after { background: #F7F7F2; }
+
+/* ---------- Halloween ---------- */
+[data-theme="halloween"] .season::before,
+[data-theme="halloween"] .season::after {
+  content: ''; position: fixed; top: 0; width: clamp(140px, 16vw, 260px); aspect-ratio: 1;
+  background: var(--cobweb) top left / contain no-repeat;
+  opacity: .22;
+}
+[data-theme="halloween"] .season::before { left: 0; }
+[data-theme="halloween"] .season::after { right: 0; transform: scaleX(-1); }
+
+/* A smaller web in the corner of each card. */
+[data-theme="halloween"] .card__media::before,
+[data-theme="halloween"] .rider__img::before {
+  content: ''; position: absolute; top: 0; left: 0; width: 70px; height: 70px; z-index: 3;
+  background: var(--cobweb) top left / contain no-repeat;
+  opacity: .3; pointer-events: none;
+}
+
+/* ---------- the ghost wears the season ---------- */
+.logo { position: relative; }
+[data-theme="christmas"] .logo::after,
+[data-theme="halloween"] .logo::after {
+  content: ''; position: absolute; z-index: 2; pointer-events: none;
+  background: center / contain no-repeat;
+}
+[data-theme="christmas"] .logo::after {
+  left: -7px; top: -11px; width: 34px; height: 26px;
+  background-image: var(--hat-winter); transform: rotate(-9deg);
+}
+[data-theme="halloween"] .logo::after {
+  left: -3px; top: -15px; width: 32px; height: 26px;
+  background-image: var(--hat-pointed); transform: rotate(-7deg);
+}
+
+/* The big ghost on the closed page gets one too. */
+.soon__wrap { position: relative; }
+[data-theme="christmas"] .soon__ghost, [data-theme="halloween"] .soon__ghost { position: relative; }
+[data-theme="christmas"] .soon__wrap::before,
+[data-theme="halloween"] .soon__wrap::before {
+  content: ''; position: absolute; top: -18px; left: 50%; width: 54px; height: 42px; z-index: 2;
+  margin-left: -46px; background: center / contain no-repeat; pointer-events: none;
+}
+[data-theme="christmas"] .soon__wrap::before { background-image: var(--hat-winter); transform: rotate(-9deg); }
+[data-theme="halloween"] .soon__wrap::before { background-image: var(--hat-pointed); transform: rotate(-7deg); }
+
 /* ---------- big screens ----------
    The layout is capped at --max so lines of text stay readable. On very wide monitors the cap
    is loosened a little, the gutters open up and the grids show another column, so the page

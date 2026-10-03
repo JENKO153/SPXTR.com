@@ -17,6 +17,51 @@ let COLLECTIONS = [];
 let PRODUCTS = [];
 let REVIEWS = [];   // approved customer reviews (reviews.js)
 
+/* ---------------- seasonal themes ----------------
+   Christmas, Halloween and anything added later. The theme is written onto <html> as data-theme
+   and everything else is done in CSS, so a theme can never break the site: at worst the
+   decoration does not appear.
+
+   Dates are stored as day and month, so they come round every year. A range may cross new year
+   (12-26 to 01-02), which is why the comparison is done on the "MM-DD" string both ways. */
+const THEMES = ['christmas', 'halloween'];
+
+function activeTheme(site = SITE) {
+  const t = site?.themes;
+  if (!t || t.mode === 'off') return '';
+  if (THEMES.includes(t.mode)) return t.mode;             // forced on from the admin
+  const now = new Date();
+  const today = `${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+  for (const name of THEMES) {
+    const d = t[name];
+    if (!d || d.on === false) continue;
+    const from = String(d.from || ''), to = String(d.to || '');
+    if (!/^\d{2}-\d{2}$/.test(from) || !/^\d{2}-\d{2}$/.test(to)) continue;
+    const inRange = from <= to ? (today >= from && today <= to) : (today >= from || today <= to);
+    if (inRange) return name;
+  }
+  return '';
+}
+
+function applyTheme(site = SITE) {
+  const name = activeTheme(site);
+  if (name) document.documentElement.dataset.theme = name;
+  else delete document.documentElement.dataset.theme;
+
+  // One fixed layer carries whatever falls or hangs over the page (snow, cobwebs). It is only
+  // added when a theme is running, and never for anyone who has asked for less movement.
+  const quiet = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+  let layer = document.querySelector('.season');
+  if (!name || quiet) { layer?.remove(); return name; }
+  if (!layer) {
+    layer = document.createElement('div');
+    layer.className = 'season';
+    layer.setAttribute('aria-hidden', 'true');
+    document.body.appendChild(layer);
+  }
+  return name;
+}
+
 // The Instagram profile: the address set in the admin if there is one, otherwise built from the handle.
 function instagramLink() {
   if (/^https:\/\/(www\.)?instagram\.com\//i.test(SITE.instagramUrl || '')) return SITE.instagramUrl;
@@ -36,6 +81,7 @@ async function loadStore() {
     const data = PREVIEW ? await previewData() : await CMS.loadPublic();
     SITE = data.settings; COLLECTIONS = data.collections; PRODUCTS = data.products; REVIEWS = data.reviews || [];
     applyStoreAccent();      // the brand colour, before anything draws — including the closed page
+    applyTheme();            // and the season, if one is running
     // Closed to the public: the database held the store back, so there's nothing to show but the
     // curtain. This never resolves, which stops the rest of the page script from running.
     // An admin, or a visitor with the preview link, gets the real site instead — even when it's
@@ -228,6 +274,7 @@ function renderChrome(active = '') {
     <div class="toast" role="status">${ICON.check}<span></span></div>`;
 
   applyStoreAccent();
+  applyTheme();
 
   // Pages start hidden (class="is-loading" on <html>) so nobody sees placeholder content
   // before the real content arrives. The page's own render runs right after this in the same

@@ -1892,6 +1892,22 @@ if (window.top !== window.self) { document.documentElement.innerHTML = ''; throw
   /* =====================================================================
      CUSTOMISE  (brand accent colour: every lime detail on the store follows it)
      ===================================================================== */
+  // Which theme the site is showing today. Mirrors activeTheme() in store.js.
+  function themeRunning(t) {
+    if (!t || t.mode === 'off') return '';
+    if (t.mode === 'christmas' || t.mode === 'halloween') return t.mode;
+    const now = new Date();
+    const today = `${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    for (const name of ['christmas', 'halloween']) {
+      const d = t[name];
+      if (!d || d.on === false) continue;
+      const from = String(d.from || ''), to = String(d.to || '');
+      if (!/^\d{2}-\d{2}$/.test(from) || !/^\d{2}-\d{2}$/.test(to)) continue;
+      if (from <= to ? (today >= from && today <= to) : (today >= from || today <= to)) return name;
+    }
+    return '';
+  }
+
   function customiseEditor() {
     setTitle('Customise');
     const saved = DATA.settings.theme?.accent || DEFAULT_SETTINGS.theme.accent;
@@ -1918,17 +1934,61 @@ if (window.top !== window.self) { document.documentElement.innerHTML = ''; throw
             </div>
             <span class="hint">Very dark colours are blocked: text in them would be hard to read on the black site. Your logo artwork stays white.</span>
           </div>
+          <div class="section">
+            <h3>Seasonal themes <small>Snow at Christmas, cobwebs at Halloween, and the ghost in a hat</small></h3>
+            <label>When to use them
+              <select id="themeMode">
+                <option value="auto">Automatically, on the dates below</option>
+                <option value="off">Never — keep the site plain</option>
+                <option value="christmas">Show Christmas now</option>
+                <option value="halloween">Show Halloween now</option>
+              </select>
+            </label>
+            <p class="hint" id="themeNow"></p>
+            <div class="seasons" id="seasons"></div>
+            <span class="hint">Dates repeat every year, so this only needs setting once. A theme may run across new year.</span>
+          </div>
           <div class="savebar">
             <span class="dirty" id="dirtyFlag" hidden>Unsaved changes</span>
             <span class="spacer"></span>
             <button type="button" class="btn btn--ghost btn--sm" id="resetAccent">Reset to SPXTR lime</button>
-            <button type="submit" class="btn">Save colour</button>
+            <button type="submit" class="btn">Save changes</button>
           </div>
         </form>
         ${previewPanel(ROOT + '?preview=1', 'spxtr.com')}
       </div>`;
 
-    const send = wirePreview(() => ({ settings: { ...DATA.settings, theme: { accent: validAccent(accent) ? accent : saved } } }));
+    // Seasonal themes live alongside the colour on this screen; both go in one save.
+    const SEASONS = [['christmas', 'Christmas', 'Falling snow, snow settling on panels, the ghost in a winter hat'],
+                     ['halloween', 'Halloween', 'Cobwebs in the corners and on cards, the ghost in a pointed hat']];
+    const themes = clone(DATA.settings.themes || DEFAULT_SETTINGS.themes);
+    const savedThemes = JSON.stringify(themes);
+    // Stored as day and month so they come round every year; the year in the picker is ignored.
+    const toInput = md => (/^\d{2}-\d{2}$/.test(md || '') ? `2001-${md}` : '');
+    const fromInput = v => (/^\d{4}-(\d{2}-\d{2})$/.test(v || '') ? v.slice(5) : '');
+    const draft = () => ({ ...DATA.settings, theme: { accent: validAccent(accent) ? accent : saved }, themes });
+
+    const send = wirePreview(() => ({ settings: draft() }));
+    const drawSeasons = () => {
+      $('#themeMode').value = themes.mode || 'auto';
+      $('#seasons').innerHTML = SEASONS.map(([key, name, what]) => {
+        const t = themes[key] || {};
+        return `<div class="season-row" data-key="${key}">
+          <label class="toggle"><input type="checkbox" data-on ${t.on === false ? '' : 'checked'}>${esc(name)}</label>
+          <p class="hint">${esc(what)}</p>
+          <div class="field-row">
+            <label>Starts<input type="date" data-from value="${toInput(t.from)}"></label>
+            <label>Ends<input type="date" data-to value="${toInput(t.to)}"></label>
+          </div>
+        </div>`;
+      }).join('');
+      const live = themeRunning(themes);
+      $('#themeNow').textContent = live
+        ? `Showing on the site right now: ${live === 'christmas' ? 'Christmas' : 'Halloween'}.`
+        : 'Nothing seasonal is showing on the site today.';
+      $('#seasons').hidden = themes.mode !== 'auto';
+    };
+
     const draw = () => {
       const ok = validAccent(accent);
       $('#swatches').innerHTML = ACCENTS.map(([name, hex]) =>
@@ -1957,19 +2017,37 @@ if (window.top !== window.self) { document.documentElement.innerHTML = ''; throw
     });
     $('#hex').addEventListener('blur', () => { if (!/^#[0-9a-f]{6}$/i.test(accent)) choose(saved); });
     $('#resetAccent').addEventListener('click', () => choose(DEFAULT_SETTINGS.theme.accent));
+
+    const themesChanged = () => {
+      dirty = JSON.stringify(themes) !== savedThemes || accent.toLowerCase() !== saved.toLowerCase();
+      $('#dirtyFlag').hidden = !dirty;
+      $('#tform button[type=submit]').disabled = !validAccent(accent);
+      drawSeasons(); send();
+    };
+    $('#themeMode').addEventListener('change', e => { themes.mode = e.target.value; themesChanged(); });
+    $('#seasons').addEventListener('change', e => {
+      const row = e.target.closest('[data-key]'); if (!row) return;
+      const t = themes[row.dataset.key] ||= {};
+      if (e.target.matches('[data-on]')) t.on = e.target.checked;
+      if (e.target.matches('[data-from]')) t.from = fromInput(e.target.value);
+      if (e.target.matches('[data-to]')) t.to = fromInput(e.target.value);
+      themesChanged();
+    });
+
     draw();
+    drawSeasons();
 
     $('#tform').addEventListener('submit', async e => {
       e.preventDefault();
       if (!validAccent(accent)) return;
-      const next = { ...DATA.settings, theme: { accent: accent.toUpperCase() } };
-      const ok = await withWrite('Enter your admin password to change the site colour.', async () => {
+      const next = { ...DATA.settings, theme: { accent: accent.toUpperCase() }, themes };
+      const ok = await withWrite('Enter your admin password to save the look of the site.', async () => {
         await CMS.saveSettings(next);
         DATA.settings = CMS.mergeSettings(next);
       });
       if (!ok) return;
       dirty = false;
-      toast('Colour updated across the site');
+      toast('Saved. The site follows this straight away');
       applyAccent();
       customiseEditor();
       refreshLater();

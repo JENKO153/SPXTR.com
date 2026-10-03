@@ -50,6 +50,15 @@ const DEFAULT_SETTINGS = {
   freeShippingOver: 100,
   // Product types (Hoodies, Tees, ...). Admin -> Products -> Product types. Used for the shop filters.
   productTypes: ['Hoodies', 'Tees', 'Outerwear', 'Bottoms', 'Headwear', 'Gear'],
+  /* Seasonal themes. "mode" is off, auto (follow the dates below), or the name of a theme to
+     force on now. Dates are day and month only: they come round every year without anyone
+     having to touch them, and a range may cross new year. */
+  themes: {
+    mode: 'auto',
+    christmas: { on: true, from: '12-01', to: '12-26' },
+    halloween: { on: true, from: '10-24', to: '11-01' },
+  },
+
   // The "coming soon" curtain (Admin -> Homepage & settings). The switch itself lives in the database.
   comingSoon: {
     eyebrow: 'SPXTR Collective',

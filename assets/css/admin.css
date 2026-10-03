@@ -380,3 +380,9 @@ tbody tr:last-child td { border: 0; }
 .launch__row button:hover { color: var(--red); }
 .launch__send { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
 .launch__send .btn[disabled] { opacity: .5; pointer-events: none; }
+
+/* ---------- seasonal themes ---------- */
+.seasons { display: grid; gap: 14px; margin: 12px 0 10px; }
+.season-row { padding: 14px 16px; background: var(--surface-2); border: 1px solid var(--line); display: grid; gap: 8px; }
+.season-row .hint { margin: 0; }
+.season-row .field-row { margin: 0; }
