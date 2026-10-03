@@ -707,6 +707,41 @@ body.soon::after { content: ''; position: fixed; right: -12%; bottom: -10%; widt
 .motion .card.tilt .quick, .motion .card.tilt .card__badge { transform: translateZ(28px); }
 .motion .card.tilt .quick { transform: translateY(0) translateZ(28px); }
 
+/* ---------- the footer wordmark fills up ----------
+   The giant SPXTR at the bottom is a mask, so anything inside it is clipped to the letterforms.
+   On hover the brand colour rises up through the letters like liquid, with a domed, slowly
+   wobbling surface, and drains back out when the pointer leaves.
+   Mouse and trackpad only: on a touchscreen a hover state has no way to end. */
+.footer__giant { position: relative; overflow: hidden; isolation: isolate; }
+@media (hover: hover) and (pointer: fine) {
+  .motion .footer__giant::before {
+    content: ''; position: absolute; left: -12%; right: -12%; bottom: -10%;   /* at rest it sits below the letters */
+    height: 0;
+    background: linear-gradient(0deg, var(--hot-2), var(--hot) 55%);
+    border-radius: 46% 54% 0 0 / 16% 14% 0 0;
+    transition: height .75s var(--ease-soft);              /* draining is the quicker half */
+    animation: spx-swell 4.5s ease-in-out infinite alternate;
+  }
+  .motion .footer__giant:hover::before {
+    height: 126%;
+    transition: height 1.15s var(--ease-out);              /* filling takes its time */
+  }
+  /* A brighter line riding on the surface, so it reads as liquid rather than a bar. */
+  .motion .footer__giant::after {
+    content: ''; position: absolute; left: -12%; right: -12%; bottom: -10%;
+    height: 0; border-top: 3px solid color-mix(in srgb, var(--hot) 55%, #fff);
+    border-radius: 46% 54% 0 0 / 16% 14% 0 0; opacity: 0;
+    transition: height .75s var(--ease-soft), opacity .4s ease;
+    animation: spx-swell 4.5s ease-in-out infinite alternate;
+  }
+  .motion .footer__giant:hover::after { height: 126%; opacity: .9; transition: height 1.15s var(--ease-out), opacity .3s ease; }
+}
+@keyframes spx-swell {
+  0%   { border-radius: 46% 54% 0 0 / 16% 14% 0 0; }
+  50%  { border-radius: 52% 48% 0 0 / 12% 18% 0 0; }
+  100% { border-radius: 44% 56% 0 0 / 18% 12% 0 0; }
+}
+
 /* ---------- hover and press ----------
    These are wanted whether or not the reveal system is running, so they sit outside .motion
    and are switched off wholesale by the reduced-motion rule at the end of this file. */
