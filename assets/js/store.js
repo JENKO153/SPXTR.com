@@ -281,7 +281,8 @@ function productCard(p) {
   return `
     <article class="card${soldOut ? ' soldout' : ''}">
       <div class="card__media">
-        <a href="${productUrl(p)}" tabindex="-1">${badge}<img src="${imgSrc(p.images[0])}" alt="${esc(p.name)}" loading="lazy"></a>
+        <a href="${productUrl(p)}" tabindex="-1">${badge}<img src="${imgSrc(p.images[0])}" alt="${esc(p.name)}" loading="lazy">${
+          p.images[1] ? `<img class="card__alt" src="${imgSrc(p.images[1])}" alt="" aria-hidden="true" loading="lazy">` : ''}</a>
         <span class="corners"></span>
         ${soldOut ? '<div class="soldout-tag"><span>Sold out</span></div>' : ''}
         <button class="card__wish" aria-label="Save ${esc(p.name)}" data-wish>${ICON.heart}</button>

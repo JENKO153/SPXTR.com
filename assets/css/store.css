@@ -650,6 +650,60 @@ body.soon::after { content: ''; position: fixed; right: -12%; bottom: -10%; widt
 @keyframes spx-fade-out { to { opacity: 0; } }
 @keyframes spx-fade-in { from { opacity: 0; } }
 
+/* A second photo sits behind the first and comes forward on hover, so the piece turns as you
+   look at it. Only on products that have one. */
+.card__media .card__alt { position: absolute; inset: 0; opacity: 0; transform: scale(1.06); transition: opacity .55s var(--ease-soft), transform 1.2s var(--ease-out); }
+.card:hover .card__media .card__alt { opacity: 1; transform: scale(1); }
+/* Only fade the first photo out when there is a second one behind it to show. */
+.card:hover .card__media > a > img:first-of-type:has(+ .card__alt) { opacity: 0; transition: opacity .55s var(--ease-soft); }
+
+/* Page tiles: the one under the cursor opens up and the others give way. Wide screens only —
+   below 900px the tiles stack into a grid (see the responsive section) and there is no cursor. */
+@media (min-width: 901px) {
+  .disc { display: flex; }
+  .disc a { flex: 1 1 0; min-width: 0; transition: flex-grow .55s var(--ease-out), filter .4s; }
+  .motion .disc:hover a { flex-grow: .86; }
+  .motion .disc a:hover { flex-grow: 1.7; }
+}
+.disc__label h3 { transition: color .3s, transform .5s var(--ease-out); }
+.disc a:hover .disc__label h3 { transform: translateY(-4px); }
+.disc__label .code { transition: letter-spacing .5s var(--ease-out), color .3s; }
+.disc a:hover .disc__label .code { letter-spacing: .3em; color: var(--hot); }
+.disc__label::after {
+  content: ''; display: block; height: 2px; width: 100%; margin-top: 10px; background: var(--hot);
+  transform: scaleX(0); transform-origin: left; transition: transform .5s var(--ease-out);
+}
+.disc a:hover .disc__label::after { transform: scaleX(1); }
+
+/* Headlines come up from behind their own edge. */
+.motion .line-mask { display: block; overflow: hidden; }
+.motion .line-mask > span { display: block; transform: translateY(105%); transition: transform 1s var(--ease-out); transition-delay: calc(var(--l, 0) * 90ms); }
+.motion .in .line-mask > span, .motion .line-mask.in > span { transform: none; }
+
+/* A hairline that fills as you read down the page. */
+.motion .read-line { position: fixed; left: 0; top: 0; height: 2px; width: 100%; z-index: 45; background: var(--hot); transform: scaleX(var(--read, 0)); transform-origin: left; pointer-events: none; opacity: .9; }
+
+/* ---------- tilt ----------
+   The card leans towards the cursor (motion.js sets the angles), the photo drifts a little
+   further than the frame, and a soft glare follows the pointer across it. */
+.motion .card, .motion .rider, .motion .report, .motion .rv-card { transform-style: preserve-3d; }
+.motion .card.tilt, .motion .rider.tilt, .motion .report.tilt, .motion .rv-card.tilt {
+  transform: perspective(1000px) rotateX(var(--rx, 0)) rotateY(var(--ry, 0)) translate3d(0, -6px, 0);
+  transition: transform .18s ease-out;
+}
+.motion .card.tilt .card__media img, .motion .rider.tilt .rider__img img {
+  transform: scale(1.06) translate3d(var(--px, 0), var(--py, 0), 0);
+}
+.motion .card__media::after, .motion .rider__img::after {
+  content: ''; position: absolute; inset: 0; z-index: 2; pointer-events: none; opacity: 0;
+  background: radial-gradient(420px circle at var(--mx, 50%) var(--my, 50%), rgba(255,255,255,.16), transparent 60%);
+  transition: opacity .35s ease;
+}
+.motion .card.tilt .card__media::after, .motion .rider.tilt .rider__img::after { opacity: 1; }
+/* The quick-add panel and labels ride in front of the tilt rather than lying flat on it. */
+.motion .card.tilt .quick, .motion .card.tilt .card__badge { transform: translateZ(28px); }
+.motion .card.tilt .quick { transform: translateY(0) translateZ(28px); }
+
 /* ---------- hover and press ----------
    These are wanted whether or not the reveal system is running, so they sit outside .motion
    and are switched off wholesale by the reduced-motion rule at the end of this file. */
@@ -665,8 +719,8 @@ body.soon::after { content: ''; position: fixed; right: -12%; bottom: -10%; widt
 .card__name { transition: color .2s; }
 .card:hover .card__name { color: var(--hot); }
 
-.rider__img img, .disc img { transition: transform 1.1s var(--ease-out), filter .5s ease; }
-.rider:hover .rider__img img, .disc:hover img { transform: scale(1.05); }
+.rider__img img { transition: transform 1.1s var(--ease-out), filter .5s ease; }
+.rider:hover .rider__img img { transform: scale(1.05); }
 
 /* Navigation: the underline grows out from the left instead of appearing. */
 .nav a::after {
