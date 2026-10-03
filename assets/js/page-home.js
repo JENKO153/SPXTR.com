@@ -131,7 +131,78 @@ function heroVideo(h) {
   ['touchstart', 'click'].forEach(ev => document.addEventListener(ev, onTouch, { once: true, passive: true }));
   // Coming back to the tab pauses and resumes media on iOS.
   document.addEventListener('visibilitychange', () => { if (!document.hidden && el.paused && !el.hidden) tryPlay(); });
+
+  heroSound(el);
 }
+
+/* The banner's sound.
+
+   Every browser refuses to autoplay a video with sound, so it always starts silent and the
+   visitor turns it on. The choice is remembered, but it is never acted on until they touch the
+   page: nobody should load a site and be met with noise.
+
+   The sound also drops away when the banner is not on screen, and the video pauses entirely,
+   which saves a phone's battery and stops audio playing from something nobody can see. */
+const SOUND_KEY = 'spx_hero_sound';
+const soundWanted = () => { try { return localStorage.getItem(SOUND_KEY) === 'on'; } catch { return false; } };
+
+function heroSound(el) {
+  if ($('#hero-sound')) return;
+  const hero = el.closest('.hero');
+  if (!hero) return;
+
+  const btn = document.createElement('button');
+  btn.id = 'hero-sound';
+  btn.className = 'hero__sound';
+  btn.type = 'button';
+  hero.appendChild(btn);
+
+  let onScreen = true;
+  const paint = () => {
+    const on = !el.muted;
+    btn.classList.toggle('on', on);
+    btn.setAttribute('aria-pressed', String(on));
+    btn.setAttribute('aria-label', on ? 'Turn the banner sound off' : 'Turn the banner sound on');
+    btn.title = btn.getAttribute('aria-label');
+    btn.innerHTML = `${on ? ICON.sound : ICON.mute}<span>${on ? 'Sound on' : 'Sound off'}</span>`;
+  };
+
+  const setSound = (on, remember = true) => {
+    el.muted = !on;
+    if (on) el.volume = 1;
+    if (remember) { try { localStorage.setItem(SOUND_KEY, on ? 'on' : 'off'); } catch { /* private mode */ } }
+    paint();
+  };
+
+  btn.addEventListener('click', () => {
+    setSound(el.muted);                      // a click is the gesture every browser asks for
+    if (el.paused) tryPlayAgain(el);
+  });
+  paint();
+
+  // Wanted sound last time? Wait for them to touch the page, then turn it on quietly.
+  if (soundWanted()) {
+    const resume = () => { if (onScreen) setSound(true, false); };
+    ['pointerdown', 'keydown'].forEach(ev => document.addEventListener(ev, resume, { once: true, passive: true }));
+  }
+
+  // Off screen: no sound, no playback.
+  if ('IntersectionObserver' in window) {
+    new IntersectionObserver(([e]) => {
+      onScreen = e.isIntersecting;
+      if (onScreen) {
+        tryPlayAgain(el);
+      } else {
+        el.muted = true;
+        el.pause();
+        paint();
+      }
+    }, { threshold: 0.15 }).observe(hero);
+  }
+}
+
+const tryPlayAgain = el => el.play?.().catch(() => {});
+
 const safeVideo = u => (/^(https:\/\/|assets\/video\/[a-z0-9._-]+\.(mp4|webm))$/i.test(u || '') ? u : '');
 
 function renderTested() {

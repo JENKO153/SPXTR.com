@@ -863,6 +863,26 @@ body.soon::after { content: ''; position: fixed; right: -12%; bottom: -10%; widt
 .size-grid button, .size-row button, .quick__sizes button { transition: background .2s, color .2s, border-color .2s, transform .18s var(--ease-out); }
 .size-grid button:hover, .size-row button:hover, .quick__sizes button:hover { transform: translateY(-2px); }
 
+/* ---------- the banner's sound ----------
+   Sits in the corner of the banner. It always starts silent, because no browser will autoplay
+   sound, so this is the way in rather than a decoration. */
+.hero__sound {
+  position: absolute; right: var(--gutter); bottom: 112px; z-index: 5;
+  display: inline-flex; align-items: center; gap: 9px;
+  padding: 9px 14px 9px 12px;
+  background: rgba(10, 10, 10, .62); backdrop-filter: blur(6px);
+  border: 1px solid var(--line-2); color: var(--bone);
+  font: 500 11px/1 var(--mono); letter-spacing: .12em; text-transform: uppercase;
+  transition: background .25s, border-color .25s, color .25s, transform .2s var(--ease-out);
+}
+.hero__sound svg { width: 16px; height: 16px; }
+.hero__sound:is(:hover, .is-held) { background: rgba(10, 10, 10, .85); border-color: var(--hot); color: var(--hot); transform: translateY(-2px); }
+.hero__sound.on { border-color: var(--hot); color: var(--hot); }
+@media (max-width: 900px) {
+  .hero__sound { bottom: auto; top: 18px; right: 16px; padding: 8px 10px; }
+  .hero__sound span { display: none; }          /* the icon says it on a phone */
+}
+
 /* ---------- big screens ----------
    The layout is capped at --max so lines of text stay readable. On very wide monitors the cap
    is loosened a little, the gutters open up and the grids show another column, so the page
