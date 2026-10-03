@@ -1893,12 +1893,23 @@ if (window.top !== window.self) { document.documentElement.innerHTML = ''; throw
      CUSTOMISE  (brand accent colour: every lime detail on the store follows it)
      ===================================================================== */
   // Which theme the site is showing today. Mirrors activeTheme() in store.js.
+  // The themes the site knows about, in the order they are tried. Mirrors THEMES in store.js.
+  const SEASON_KEYS = ['christmas', 'halloween', 'easter', 'birthday', 'australia'];
+  const SEASON_NAMES = { christmas: 'Christmas', halloween: 'Halloween', easter: 'Easter',
+                         birthday: 'Birthday', australia: 'Australia Day' };
+  // The colour each theme paints the site in, so the picker shows the season rather than naming
+  // it. Accents match SEASON in store.js; the second colour is that theme's background.
+  const SEASON_LOOK = {
+    christmas: ['#E33B3B', '#080A0D'], halloween: ['#F08622', '#0A0708'], easter: ['#EFA9C7', '#0B0A0C'],
+    birthday: ['#FFC53D', '#0B0906'], australia: ['#FFCD00', '#070C08'],
+  };
+
   function themeRunning(t) {
     if (!t || t.mode === 'off') return '';
-    if (t.mode === 'christmas' || t.mode === 'halloween') return t.mode;
+    if (SEASON_KEYS.includes(t.mode)) return t.mode;
     const now = new Date();
     const today = `${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-    for (const name of ['christmas', 'halloween']) {
+    for (const name of SEASON_KEYS) {
       const d = t[name];
       if (!d || d.on === false) continue;
       const from = String(d.from || ''), to = String(d.to || '');
@@ -1935,15 +1946,9 @@ if (window.top !== window.self) { document.documentElement.innerHTML = ''; throw
             <span class="hint">Very dark colours are blocked: text in them would be hard to read on the black site. Your logo artwork stays white.</span>
           </div>
           <div class="section">
-            <h3>Seasonal themes <small>Snow at Christmas, cobwebs at Halloween, and the ghost in a hat</small></h3>
-            <label>When to use them
-              <select id="themeMode">
-                <option value="auto">Automatically, on the dates below</option>
-                <option value="off">Never — keep the site plain</option>
-                <option value="christmas">Show Christmas now</option>
-                <option value="halloween">Show Halloween now</option>
-              </select>
-            </label>
+            <h3>Seasonal themes <small>Each one dresses the site, recolours it and gives the writing a seasonal turn</small></h3>
+            <span class="hint">Pick a season to put it on the site now, whatever the date — or leave it on automatic and it will come and go on its own.</span>
+            <div class="swatches season-pick" id="themePick"></div>
             <p class="hint" id="themeNow"></p>
             <div class="seasons" id="seasons"></div>
             <span class="hint">Dates repeat every year, so this only needs setting once. A theme may run across new year.</span>
@@ -1959,8 +1964,13 @@ if (window.top !== window.self) { document.documentElement.innerHTML = ''; throw
       </div>`;
 
     // Seasonal themes live alongside the colour on this screen; both go in one save.
-    const SEASONS = [['christmas', 'Christmas', 'Falling snow, snow settling on panels, the ghost in a winter hat'],
-                     ['halloween', 'Halloween', 'Cobwebs in the corners and on cards, the ghost in a pointed hat']];
+    const SEASONS = [
+      ['christmas', 'Snow falling in three depths, drifts settling on every panel, lights strung across the top, a snowman and a tree in the footer. Red and white, and the writing turns festive.'],
+      ['halloween', 'Cobwebs in the corners and on the cards, bats crossing, a spider on its thread, lanterns and a candle burning in the footer, blood running into the banner. Orange and black, and the writing turns spooky.'],
+      ['easter', 'Blossom on the breeze, egg bunting along the top, a nest of painted eggs in the footer, and the ghost in bunny ears. Pastel pink, mint and yellow.'],
+      ['birthday', 'Confetti falling, bunting along the top, balloons bobbing at the edge and a candle-lit cake in the footer. Gold, and the ghost in a party hat.'],
+      ['australia', 'Green and gold bunting, the Southern Cross overhead, wattle in the footer and the ghost in a cork hat.'],
+    ].map(([key, what]) => [key, SEASON_NAMES[key], what]);
     const themes = clone(DATA.settings.themes || DEFAULT_SETTINGS.themes);
     const savedThemes = JSON.stringify(themes);
     // Stored as day and month so they come round every year; the year in the picker is ignored.
@@ -1970,7 +1980,22 @@ if (window.top !== window.self) { document.documentElement.innerHTML = ''; throw
 
     const send = wirePreview(() => ({ settings: draft() }));
     const drawSeasons = () => {
-      $('#themeMode').value = themes.mode || 'auto';
+      const mode = themes.mode || 'auto';
+      const live = themeRunning(themes);
+      const nice = md => (/^(\d{2})-(\d{2})$/.test(md || '') ? `${md.slice(3)}/${md.slice(0, 2)}` : '');
+      const chip = (key, name, sub, style) =>
+        `<button type="button" class="swatch ${mode === key ? 'on' : ''}" data-mode="${key}">
+           <i style="${style}"></i>${esc(name)}<small>${esc(sub)}</small></button>`;
+      $('#themePick').innerHTML =
+        chip('auto', 'Automatic', live ? `Now: ${SEASON_NAMES[live]}` : 'Nothing today',
+             'background:linear-gradient(135deg,#E33B3B 0 20%,#F08622 20% 40%,#EFA9C7 40% 60%,#FFC53D 60% 80%,#00843D 80% 100%)')
+      + chip('off', 'Off', 'Site stays plain', 'background:var(--surface-2);border:1px solid var(--line-2)')
+      + SEASON_KEYS.map(k => {
+          const [hot, bg] = SEASON_LOOK[k], d = themes[k] || {};
+          return chip(k, SEASON_NAMES[k], `${nice(d.from)} – ${nice(d.to)}`,
+                      `background:linear-gradient(140deg, ${bg} 0 42%, ${hot} 42% 100%)`);
+        }).join('');
+
       $('#seasons').innerHTML = SEASONS.map(([key, name, what]) => {
         const t = themes[key] || {};
         return `<div class="season-row" data-key="${key}">
@@ -1982,9 +2007,8 @@ if (window.top !== window.self) { document.documentElement.innerHTML = ''; throw
           </div>
         </div>`;
       }).join('');
-      const live = themeRunning(themes);
       $('#themeNow').textContent = live
-        ? `Showing on the site right now: ${live === 'christmas' ? 'Christmas' : 'Halloween'}.`
+        ? `Showing on the site right now: ${SEASON_NAMES[live]}.`
         : 'Nothing seasonal is showing on the site today.';
       $('#seasons').hidden = themes.mode !== 'auto';
     };
@@ -2024,7 +2048,10 @@ if (window.top !== window.self) { document.documentElement.innerHTML = ''; throw
       $('#tform button[type=submit]').disabled = !validAccent(accent);
       drawSeasons(); send();
     };
-    $('#themeMode').addEventListener('change', e => { themes.mode = e.target.value; themesChanged(); });
+    $('#themePick').addEventListener('click', e => {
+      const b = e.target.closest('[data-mode]');
+      if (b) { themes.mode = b.dataset.mode; themesChanged(); }
+    });
     $('#seasons').addEventListener('change', e => {
       const row = e.target.closest('[data-key]'); if (!row) return;
       const t = themes[row.dataset.key] ||= {};

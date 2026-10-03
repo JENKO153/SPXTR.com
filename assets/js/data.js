@@ -57,6 +57,9 @@ const DEFAULT_SETTINGS = {
     mode: 'auto',
     christmas: { on: true, from: '12-01', to: '12-26' },
     halloween: { on: true, from: '10-24', to: '11-01' },
+    easter: { on: true, from: '03-28', to: '04-08' },
+    birthday: { on: false, from: '01-01', to: '01-02' },   // set to the day the crew picks
+    australia: { on: true, from: '01-24', to: '01-27' },
   },
 
   // The "coming soon" curtain (Admin -> Homepage & settings). The switch itself lives in the database.

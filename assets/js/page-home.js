@@ -54,9 +54,15 @@ function renderHome() {
   bar.style.setProperty('--count', Math.max(1, promises.length));
   bar.hidden = !promises.length;
 
-  const words = (SITE.marquee || []).filter(Boolean);
+  const words = marqueeWords();                    // the season's lines if one is running
   fillTicker($('#marquee'), words.map(w => `<span>${esc(w)}</span>`).join(''));
   fillTicker.redraw = () => renderChrome() || renderHome();   // keep both tickers across the screen
+  // Switching theme in the admin's live preview changes the ticker's words. Only the words are
+  // redrawn here - re-rendering the page would set the theme again and go round in circles.
+  if (!seasonTicker.bound) {
+    seasonTicker.bound = true;
+    document.addEventListener('spx:season', seasonTicker);
+  }
 
   // Pages the admin has set up
   txt('#pages-eyebrow', SITE.pagesSection.eyebrow);
@@ -276,6 +282,12 @@ function renderTeam() {
 // The countdown block is either an event (date, gates time, venue) or a product drop (just a timer).
 // Venue is optional for both: leave it blank and it simply isn't shown.
 // Home plus whatever stats suit their sport. Older riders saved with a single stat still work.
+// Re-fills the banner ticker with whatever the running season says.
+function seasonTicker() {
+  const el = document.querySelector('#marquee');
+  if (el) fillTicker(el, marqueeWords().map(w => `<span>${esc(w)}</span>`).join(''));
+}
+
 function riderStats(r) {
   const stats = (r.stats || []).filter(x => x && (x.label || x.value));
   if (!stats.length && (r.statLabel || r.statValue)) stats.push({ label: r.statLabel, value: r.statValue });

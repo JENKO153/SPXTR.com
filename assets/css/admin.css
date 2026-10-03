@@ -315,6 +315,18 @@ tbody tr:last-child td { border: 0; }
 .swatch i { display: block; height: 44px; }
 .swatch:hover { border-color: var(--muted); }
 .swatch.on { border-color: var(--bone); box-shadow: 0 0 0 2px var(--bone) inset; }
+.swatch small { display: block; font: 500 10px var(--mono); letter-spacing: .06em; color: var(--muted);
+                text-transform: none; margin-top: 2px; }
+
+/* The season picker is the colour picker in another coat: each chip is painted in the palette
+   that season puts on the site, so the choice is made by eye rather than by reading a list. */
+.season-pick { margin: 10px 0 14px; }
+.season-pick .swatch i { height: 38px; position: relative; overflow: hidden; }
+.season-pick .swatch.on i::after {
+  content: ''; position: absolute; inset: 0; box-shadow: 0 0 0 2px rgba(242, 242, 238, .5) inset;
+}
+.season-row { padding: 14px; background: var(--bg-2); border: 1px solid var(--line-2); margin-bottom: 10px; }
+.season-row .hint { margin: 6px 0 10px; }
 .custom-colour { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
 .custom-colour input[type=color] { width: 54px; height: 44px; padding: 0; border: 1px solid var(--line-2); background: none; cursor: pointer; }
 .custom-colour input[type=text] { width: 130px; font-family: var(--mono); text-transform: uppercase; }

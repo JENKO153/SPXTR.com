@@ -24,7 +24,59 @@ let REVIEWS = [];   // approved customer reviews (reviews.js)
 
    Dates are stored as day and month, so they come round every year. A range may cross new year
    (12-26 to 01-02), which is why the comparison is done on the "MM-DD" string both ways. */
-const THEMES = ['christmas', 'halloween'];
+const THEMES = ['christmas', 'halloween', 'easter', 'birthday', 'australia'];
+
+// What each season does to the site beyond the decorations: the colour everything accents with,
+// and the handful of lines that take on the season's voice. The rest of the palette (background,
+// panels, rules) is in store.css under [data-theme="..."]; the accent lives here because the
+// colour set in Admin -> Customise is applied as an inline style and would otherwise win.
+//
+// The wording stays in the brand's voice - short, blunt, a bit mouthy - rather than turning the
+// site into a greetings card. Anything not listed here is left exactly as the client wrote it.
+const SEASON = {
+  christmas: {
+    accent: '#E33B3B',
+    stamp: 'Sleigh tested',
+    marquee: ['Send it', 'Sleigh it', 'No days off', 'Cold hands, warm sends', 'Ride again'],
+  },
+  halloween: {
+    accent: '#F08622',
+    stamp: 'Haunted and rider tested',
+    marquee: ['Send it or scream', 'Ghost it', 'Dead sends only', 'Crash, rise again', 'No days off'],
+  },
+  easter: {
+    accent: '#EFA9C7',
+    stamp: 'Rider tested, egg approved',
+    marquee: ['Send it', 'Hop to it', 'No days off', 'Four days, no excuses', 'Ride again'],
+  },
+  birthday: {
+    accent: '#FFC53D',
+    stamp: 'Another year, rider tested',
+    marquee: ['Send it', 'Another year sending', 'No days off', 'Make a wish, then send', 'Ride again'],
+  },
+  australia: {
+    accent: '#FFCD00',
+    stamp: 'Rider tested, sun baked',
+    marquee: ['Send it', 'Green and gold', 'No days off', 'Flat out, mate', 'Ride again'],
+  },
+};
+
+// The ticker reads the season first and the client's own lines otherwise.
+function marqueeWords(site = SITE) {
+  const seasonal = SEASON[activeTheme(site)]?.marquee;
+  return (seasonal || site.marquee || []).filter(Boolean);
+}
+
+// Copy that changes with the season. An element opts in with data-season="<key>"; its own words
+// are kept in data-plain so turning the theme off puts them straight back - which is what the
+// live preview in the admin needs when you switch between themes.
+function seasonCopy(name) {
+  const words = name ? SEASON[name] : null;
+  document.querySelectorAll('[data-season]').forEach(el => {
+    if (el.dataset.plain === undefined) el.dataset.plain = el.textContent.trim();
+    el.textContent = words?.[el.dataset.season] || el.dataset.plain;
+  });
+}
 
 function activeTheme(site = SITE) {
   const t = site?.themes;
@@ -48,18 +100,81 @@ function applyTheme(site = SITE) {
   if (name) document.documentElement.dataset.theme = name;
   else delete document.documentElement.dataset.theme;
 
+  // The season's accent, straight onto the page rather than through spxAccent, so a seasonal
+  // colour is never remembered in this browser and shown again in February. Off-season, the
+  // colour from Admin -> Customise comes back.
+  // The flag-painted ghost needs the brand artwork's own address, which the client can change.
+  if (STORE.brand?.ghostClear) {
+    // Resolved to a full address here: an address inside a custom property is read relative to
+    // the stylesheet that uses it, which would look for the artwork next to the CSS file.
+    try {
+      const url = new URL(STORE.brand.ghostClear, document.baseURI).href;
+      document.documentElement.style.setProperty('--ghost-clear', `url("${url}")`);
+    } catch { /* an odd address simply leaves the ghost plain */ }
+  }
+
+  const accent = SEASON[name]?.accent;
+  if (accent) document.documentElement.style.setProperty('--hot', accent);
+  else applyStoreAccent();
+  seasonCopy(name);
+  // Anything already drawn from the season's wording (the ticker) redraws itself on this.
+  document.dispatchEvent(new CustomEvent('spx:season', { detail: { theme: name } }));
+
   // One fixed layer carries whatever falls or hangs over the page (snow, cobwebs). It is only
   // added when a theme is running, and never for anyone who has asked for less movement.
   const quiet = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
   let layer = document.querySelector('.season');
-  if (!name || quiet) { layer?.remove(); return name; }
+  if (!name || quiet) { layer?.remove(); document.querySelector('.season-page')?.remove(); return name; }
   if (!layer) {
     layer = document.createElement('div');
     layer.className = 'season';
     layer.setAttribute('aria-hidden', 'true');
+    // Four empty slots for each theme to hang its own pieces on (pumpkins, a snowman, bunting,
+    // balloons). Keeping them generic means a new theme is CSS alone.
+    layer.innerHTML = '<i class="season__a"></i><i class="season__b"></i><i class="season__c"></i><i class="season__d"></i>';
     document.body.appendChild(layer);
   }
+  // A second layer that belongs to the page rather than the window: what hangs in its corners
+  // scrolls away like a decoration in a room, instead of following the reader down the screen.
+  if (!document.querySelector('.season-page')) {
+    const page = document.createElement('div');
+    page.className = 'season-page';
+    page.setAttribute('aria-hidden', 'true');
+    page.innerHTML = '<i class="nook nook--tl"></i><i class="nook nook--tr"></i><i class="nook nook--bl"></i>'
+                   + '<i class="nook nook--br"></i><i class="swag"></i><i class="hang"></i>';
+    document.body.appendChild(page);
+  }
+  measureChrome();
   return name;
+}
+
+// Garlands hang off the bottom of the header rather than from the top of the window, so they
+// look fixed to the site rather than laid over it. The header's height is whatever it is after
+// the announcement bar, the logo and any shrinking, so it is measured rather than guessed.
+function measureChrome() {
+  const layer = document.querySelector('.season');
+  if (!layer) return;
+  const head = document.querySelector('.header');
+  const bottom = head ? Math.round(head.getBoundingClientRect().bottom) : 0;
+  layer.style.setProperty('--chrome', `${Math.max(0, bottom)}px`);
+  // The page layer is as tall as the page, so its bottom corners sit at the bottom of the page.
+  // The props in the footer stand on the line above the big wordmark, not on the very bottom of
+  // the page, where the wordmark would swallow them.
+  const foot = document.querySelector('.footer');
+  const giant = document.querySelector('.footer__giant');
+  if (foot) foot.style.setProperty('--floor', `${giant ? Math.round(giant.offsetHeight) : 0}px`);
+
+  const page = document.querySelector('.season-page');
+  if (page) {
+    page.style.height = `${document.documentElement.scrollHeight}px`;
+    page.style.setProperty('--chrome', `${Math.max(0, head ? head.offsetHeight + head.offsetTop : 0)}px`);
+  }
+  if (measureChrome.watching) return;
+  measureChrome.watching = true;
+  let t;
+  const again = () => { clearTimeout(t); t = setTimeout(measureChrome, 120); };
+  window.addEventListener('resize', again);
+  window.addEventListener('scroll', again, { passive: true });   // the header shrinks as you scroll
 }
 
 // The Instagram profile: the address set in the admin if there is one, otherwise built from the handle.
@@ -104,7 +219,7 @@ function showComingSoon() {
   document.body.className = 'soon';
   document.body.innerHTML = `
     <main class="soon__wrap">
-      <img class="soon__ghost" src="${esc(STORE.brand.ghostClear)}" alt="">
+      <span class="soon__head"><img class="soon__ghost" src="${esc(STORE.brand.ghostClear)}" alt=""></span>
       <div class="soon__word" role="img" aria-label="${esc(STORE.name)}" style="-webkit-mask-image:url('${esc(STORE.brand.wordmarkMask)}');mask-image:url('${esc(STORE.brand.wordmarkMask)}')"></div>
       <span class="eyebrow">${esc(c.eyebrow || '')}</span>
       <h1 class="display">${esc(c.title || 'Something\'s coming.')}</h1>
@@ -173,8 +288,10 @@ const GHOST_SVG = `<svg class="logo__ghost" viewBox="0 0 100 120" aria-hidden="t
   <path fill="var(--bone)" d="M50 4C30 4 22 20 22 36v16C14 60 8 66 4 78c8-4 12-6 16-6-6 10-8 20-6 32 6-10 10-16 14-18 0 10 2 20 10 30 0-10 2-18 6-22 2 8 6 16 12 22 0-10 2-18 4-24 4 6 10 12 16 14-4-10-4-18-2-24 6 2 12 8 18 14-2-12-6-22-12-30l-2-30C78 20 70 4 50 4Z"/>
   <path fill="var(--ink)" d="M33 31l13 7c0 6-4 9-8 7s-5-7-5-14Zm34 0-13 7c0 6 4 9 8 7s5-7 5-14Z"/>
 </svg>`;
+// The ghost sits in its own box. A seasonal hat is placed against that box in percentages, so
+// it stays on the ghost's head at every size the mark is used at - header, footer or phone.
 const logoHtml = () => `<a href="./" class="logo" aria-label="${STORE.name} home">
-  <img class="logo__ghost" src="${STORE.brand.ghost}" alt="" data-fallback="ghost">
+  <span class="logo__head"><img class="logo__ghost" src="${STORE.brand.ghost}" alt="" data-fallback="ghost"></span>
   <img class="logo__word" src="${STORE.brand.wordmark}" alt="${STORE.name}" data-fallback="word">
 </a>`;
 function wireBrandFallbacks(root = document) {
