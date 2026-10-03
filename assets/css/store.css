@@ -32,7 +32,7 @@
   /* A real wave: a smooth sine drawn as a mask, so it takes the brand colour and tiles with no
      seam. Two copies at different widths and speeds slide across each other, which is what makes
      a surface look like moving liquid rather than a repeating shape. */
-  --wave: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 100' preserveAspectRatio='none'%3E%3Cpath d='M0 52 C 46 16 94 16 140 52 S 234 88 280 52 S 374 16 400 34 L400 100 L0 100 Z' fill='%23fff'/%3E%3C/svg%3E");
+  --wave: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 480 128' preserveAspectRatio='none'%3E%3Cpath d='M0 64 C 90 30 150 98 240 64 C 330 30 390 98 480 64 L480 128 L0 128 Z' fill='%23fff'/%3E%3C/svg%3E");
   --noise: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 .55 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
 }
 
@@ -746,7 +746,9 @@ body.soon::after { content: ''; position: fixed; right: -12%; bottom: -10%; widt
     will-change: transform;
   }
   .motion .giant__wave::before, .motion .giant__wave::after {
-    content: ''; position: absolute; bottom: -2px; left: 0; height: 100%; width: 300%;
+    /* The surface rolls up to 10px; the fill reaches well below it so body and surface never
+       come apart, whatever point the roll is at. */
+    content: ''; position: absolute; bottom: -18px; left: 0; height: calc(100% + 18px); width: 300%;
     background: var(--hot);
     -webkit-mask-image: var(--wave); mask-image: var(--wave);
     -webkit-mask-repeat: repeat-x; mask-repeat: repeat-x;
