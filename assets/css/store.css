@@ -708,39 +708,42 @@ body.soon::after { content: ''; position: fixed; right: -12%; bottom: -10%; widt
 .motion .card.tilt .quick { transform: translateY(0) translateZ(28px); }
 
 /* ---------- the footer wordmark fills up ----------
-   The giant SPXTR at the bottom is a mask, so anything inside it is clipped to the letterforms.
-   On hover the brand colour rises up through the letters like liquid, with a domed, slowly
-   wobbling surface, and drains back out when the pointer leaves.
-   Mouse and trackpad only: on a touchscreen a hover state has no way to end. */
+   The giant SPXTR is a mask, so whatever sits inside it is clipped to the letterforms. On hover
+   the brand colour pours up through the letters, with a wave running across its surface, and
+   drains back out when the pointer leaves.
+
+   Everything moves by transform alone — no height, no border-radius — because this element is
+   enormous on a big monitor and anything that repaints it stutters. The colour is flat for the
+   same reason: a gradient stretched over 1000px bands on wide screens. */
 .footer__giant { position: relative; overflow: hidden; isolation: isolate; }
+.giant__liquid, .giant__wave { display: block; pointer-events: none; }
+
 @media (hover: hover) and (pointer: fine) {
-  .motion .footer__giant::before {
-    content: ''; position: absolute; left: -12%; right: -12%; bottom: -10%;   /* at rest it sits below the letters */
-    height: 0;
-    background: linear-gradient(0deg, var(--hot-2), var(--hot) 55%);
-    border-radius: 46% 54% 0 0 / 16% 14% 0 0;
-    transition: height .75s var(--ease-soft);              /* draining is the quicker half */
-    animation: spx-swell 4.5s ease-in-out infinite alternate;
+  .motion .giant__liquid {
+    position: absolute; left: -25%; right: -25%; bottom: -2%; height: 125%;
+    background: var(--hot);
+    transform: translate3d(0, 100%, 0);                   /* parked below the letters */
+    transition: transform 2.4s cubic-bezier(.33, .9, .3, 1);   /* the pour */
+    will-change: transform;
   }
-  .motion .footer__giant:hover::before {
-    height: 126%;
-    transition: height 1.15s var(--ease-out);              /* filling takes its time */
+  .motion .footer__giant:hover .giant__liquid {
+    transform: translate3d(0, 0, 0);
+    transition: transform 2.4s cubic-bezier(.33, .9, .3, 1);
   }
-  /* A brighter line riding on the surface, so it reads as liquid rather than a bar. */
-  .motion .footer__giant::after {
-    content: ''; position: absolute; left: -12%; right: -12%; bottom: -10%;
-    height: 0; border-top: 3px solid color-mix(in srgb, var(--hot) 55%, #fff);
-    border-radius: 46% 54% 0 0 / 16% 14% 0 0; opacity: 0;
-    transition: height .75s var(--ease-soft), opacity .4s ease;
-    animation: spx-swell 4.5s ease-in-out infinite alternate;
+  .motion .footer__giant:not(:hover) .giant__liquid {
+    transition: transform 1.5s cubic-bezier(.5, 0, .75, .4);   /* draining is quicker */
   }
-  .motion .footer__giant:hover::after { height: 126%; opacity: .9; transition: height 1.15s var(--ease-out), opacity .3s ease; }
+
+  /* The surface: a row of crests sitting on top of the liquid, sliding sideways for ever. */
+  .motion .giant__wave {
+    position: absolute; left: 0; bottom: 100%; width: 200%; height: clamp(30px, 4vw, 70px);
+    background: radial-gradient(ellipse 50% 100% at 50% 100%, var(--hot) 99%, transparent 100%) repeat-x;
+    background-size: 12% 100%;
+    animation: spx-pour 3.2s linear infinite;
+    will-change: transform;
+  }
 }
-@keyframes spx-swell {
-  0%   { border-radius: 46% 54% 0 0 / 16% 14% 0 0; }
-  50%  { border-radius: 52% 48% 0 0 / 12% 18% 0 0; }
-  100% { border-radius: 44% 56% 0 0 / 18% 12% 0 0; }
-}
+@keyframes spx-pour { to { transform: translate3d(-12%, 0, 0); } }
 
 /* ---------- hover and press ----------
    These are wanted whether or not the reveal system is running, so they sit outside .motion

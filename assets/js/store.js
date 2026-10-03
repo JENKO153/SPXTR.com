@@ -214,7 +214,7 @@ function renderChrome(active = '') {
           <div class="pay"><span>Visa</span><span>MC</span><span>Amex</span><span>PayPal</span><span>Apple Pay</span></div>
         </div>
       </div>
-      <div class="footer__giant" aria-hidden="true"></div>
+      <div class="footer__giant" aria-hidden="true"><i class="giant__liquid"><i class="giant__wave"></i></i></div>
     </footer>
     <div class="scrim" data-close-cart></div>
     <aside class="drawer" aria-label="Cart" aria-hidden="true">
