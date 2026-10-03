@@ -255,25 +255,50 @@
     addEventListener('pointerleave', () => { if (tilted) { release(tilted); tilted = null; } });
   }
 
-  /* With a finger: the same thing happens to whatever is under it while it is down, and lets go
-     the moment the finger lifts. Scrolling is untouched — nothing here cancels the gesture. */
-  let dragging = false;
-  const under = (x, y) => document.elementFromPoint(x, y)?.closest(HOLD) || null;
-  addEventListener('pointerdown', e => {
-    if (e.pointerType !== 'touch') return;
-    dragging = true;
-    hold(under(e.clientX, e.clientY), e.clientX, e.clientY, true);
-  }, { passive: true });
-  addEventListener('pointermove', e => {
-    if (e.pointerType !== 'touch' || !dragging) return;
-    hold(under(e.clientX, e.clientY), e.clientX, e.clientY, true);
-  }, { passive: true });
-  const letGo = () => {
-    dragging = false;
+  /* With a finger. A touch is ambiguous: the same movement starts a scroll and lands on a card.
+     Reacting to it straight away makes the page flicker as things light up and go out under a
+     scrolling finger, and adds work exactly when the phone can least afford it.
+
+     So nothing happens until the finger has been still for a moment. Move before then and it is
+     a scroll, and the whole thing is called off; scroll at any point afterwards and it lets go.
+     Press and hold, and whatever is under the finger behaves as it would under a cursor. */
+  const HOLD_DELAY = 140;    // ms the finger must settle for
+  const SLOP = 10;           // px of movement allowed in that time
+  let startX = 0, startY = 0, waiting = null, holding = false;
+
+  function cancelWait() { clearTimeout(waiting); waiting = null; }
+  function letGo() {
+    cancelWait();
+    holding = false;
     pending = null;                               // drop any frame still waiting to be drawn
     if (tilted) { release(tilted); tilted = null; }
-  };
+  }
+
+  const under = (x, y) => document.elementFromPoint(x, y)?.closest(HOLD) || null;
+
+  addEventListener('pointerdown', e => {
+    if (e.pointerType !== 'touch') return;
+    letGo();
+    startX = e.clientX; startY = e.clientY;
+    waiting = setTimeout(() => {
+      waiting = null;
+      holding = true;
+      hold(under(startX, startY), startX, startY, true);
+    }, HOLD_DELAY);
+  }, { passive: true });
+
+  addEventListener('pointermove', e => {
+    if (e.pointerType !== 'touch') return;
+    if (waiting) {                                 // still deciding: any real movement is a scroll
+      if (Math.abs(e.clientX - startX) > SLOP || Math.abs(e.clientY - startY) > SLOP) cancelWait();
+      return;
+    }
+    if (holding) hold(under(e.clientX, e.clientY), e.clientX, e.clientY, true);
+  }, { passive: true });
+
   ['pointerup', 'pointercancel'].forEach(ev => addEventListener(ev, letGo, { passive: true }));
+  // The page moving under the finger means this was a scroll after all.
+  addEventListener('scroll', () => { if (waiting || holding) letGo(); }, { passive: true });
 
   /* ---------------- tickers ----------------
      The strips lean into the direction you are scrolling and settle back to their own pace when
