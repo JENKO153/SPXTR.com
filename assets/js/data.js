@@ -130,13 +130,12 @@ const DEFAULT_SETTINGS = {
         ['transport', 'Do you have reliable transport to attend shoots, events or activations?', { type: 'radio', required: true, options: ['Yes', 'Sometimes', 'No'] }],
       ]],
 
-      ['Application type', 'Pick what you are putting your name down for.', null, [
-        ['role', 'Which opportunity are you applying for?', { type: 'radio', required: true, role: true,
-          options: ['SPXTR Brand Ambassador', 'SPXTR Model', 'Both Ambassador and Model'] }],
+      ['Why SPXTR', 'The part we actually read twice.', null, [
         ['interest', 'What interests you most about joining SPXTR Collective?', { type: 'textarea', required: true, max: 1200, rows: 4 }],
         ['fearless', 'What does "Live Fearless" mean to you?', { type: 'textarea', required: true, max: 1200, rows: 4 }],
         ['fit', 'Why do you believe you would be a strong fit for SPXTR?', { type: 'textarea', required: true, max: 1200, rows: 4 }],
         ['bring', 'What qualities, experience or personality would you bring to the team?', { type: 'textarea', required: true, max: 1200, rows: 4 }],
+        ['also', '', { type: 'also' }],
       ]],
 
       ['Interests and background', 'Tick everything that is actually you.', null, [

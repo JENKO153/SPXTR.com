@@ -32,6 +32,11 @@
   applyTheme();
 
   const A = SITE.apply || DEFAULT_SETTINGS.apply;
+  // The questions themselves are part of the site, not something the admin edits, so they always
+  // come from here. Anything saved earlier is ignored, which keeps a stale copy in the database
+  // from pinning the form to an old set of questions.
+  const SECTIONS = DEFAULT_SETTINGS.apply.sections;
+  const KIND_OTHER = { ambassador: 'a model', model: 'an ambassador' };
   const door = A.doors[DOOR], otherDoor = A.doors[DOOR === 'model' ? 'ambassador' : 'model'];
   const ig = instagramLink();
 
@@ -64,6 +69,15 @@
         <div class="${cls}">${boxes}</div></div>`;
     }
 
+    // Which door they came through already says what they are applying for. The only thing left
+    // to ask is whether they want to be considered for the other one as well.
+    if (o.type === 'also') {
+      const other = KIND_OTHER[DOOR];
+      return `<div class="ap-field ap-field--full ap-also rise" style="--step:${step}" data-name="${name}">
+        <label class="ap-tick"><input type="checkbox" name="also" data-role><span>
+          Also consider me as ${esc(other)}.</span></label></div>`;
+    }
+
     if (o.type === 'photo') {
       // Either works: attach the file, or paste a link to it. Whichever they do, the other is
       // left alone — nobody should have to make an album public to apply.
@@ -88,12 +102,12 @@
       <i class="ap-field__scan" aria-hidden="true"></i></label>`;
   }
 
-  const sections = (A.sections || []);
+  const sections = SECTIONS;
   const parts = sections.map(([title, hint, when, fields, footnote], i) => `
     <fieldset class="ap-part" id="part-${i + 1}" data-part="${i + 1}" ${when ? `data-when="${when}"` : ''}>
       <span class="ap-part__ghost" aria-hidden="true">${n2(i)}</span>
       <legend class="rise">
-        <span class="ap-part__no">${n2(i)} / ${n2((A.sections || []).length - 1)}</span>
+        <span class="ap-part__no">${n2(i)} / ${n2(SECTIONS.length - 1)}</span>
         <b>${esc(title)}</b>
         <em>${esc(hint)}</em>
       </legend>
@@ -197,16 +211,9 @@
 
   /* ---------------- which sections apply to you ---------------- */
   // The door they came through ticks the box for them; changing it reshapes the form.
-  const roleInputs = $$('input[data-role]', form);
-  const preset = door.role;
-  (roleInputs.find(r => r.value === preset) || roleInputs[0])?.setAttribute('checked', 'checked');
-  roleInputs.forEach(r => { if (r.value === preset) r.checked = true; });
-
-  const roleNow = () => (roleInputs.find(r => r.checked) || {}).value || preset;
-  const wants = kind => {
-    const v = roleNow();
-    return v.includes('Both') || (kind === 'model' ? /model/i.test(v) : /ambassador/i.test(v));
-  };
+  const alsoBox = form.querySelector('input[name="also"]');
+  const roleNow = () => (alsoBox?.checked ? 'Both Ambassador and Model' : door.role);
+  const wants = kind => (alsoBox?.checked ? true : kind === DOOR);
   const shapeForm = () => {
     const plate = $('#ap-plate-role'); if (plate) plate.textContent = roleNow();
     $$('[data-when]').forEach(el => {
@@ -326,14 +333,14 @@
         photos[input.name.replace(/_file$/, '')] = await asData(file);
       }
       const r = await CMS.applyToJoin({
-        kind: wants('model') && !wants('ambassador') ? 'model' : wants('model') ? 'both' : 'ambassador',
+        kind: alsoBox?.checked ? 'both' : DOOR,
         name: String(answers.legal_name || '').trim(),
         email: String(answers.email || '').trim(),
         phone: answers.phone, location: answers.location, age,
         instagram: answers.instagram, tiktok: answers.tiktok, youtube: answers.youtube,
         links: [answers.other_link, answers.portfolio].filter(Boolean).join('\n'),
         why: answers.interest, heard: answers.heard,
-        answers, photos,
+        answers: { ...answers, role: roleNow() }, photos,
       });
       $('#apply').innerHTML = `
         <div class="ap-done">

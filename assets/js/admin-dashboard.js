@@ -316,7 +316,7 @@ if (window.top !== window.self) { document.documentElement.innerHTML = ''; throw
      status buttons go through the same password confirmation as every other change here. */
   let ambKind = '', ambFilter = '', ambOpen = null, ambList = null;
   // The wording and header photos for /ambassadors/ and /models/, edited under the list.
-  let ap = null, apImg = null, apDoor = 'ambassador';
+  let ap = null, apImg = null, apDoor = 'ambassador', ambTab = 'list';
   function apState() {
     if (ap) return;
     ap = { ...DEFAULT_SETTINGS.apply, ...clone(DATA.settings.apply || {}) };
@@ -358,7 +358,11 @@ if (window.top !== window.self) { document.documentElement.innerHTML = ''; throw
     const tabs = [['', 'All'], ['new', 'Unread'], ['reviewing', 'In review'], ['shortlisted', 'Shortlisted'], ['accepted', 'Accepted'], ['declined', 'Declined']];
     view.innerHTML = `
       ${CMS.mode === 'demo' ? '<div class="notice notice--demo"><b>Demo mode.</b> Applications sent from the ambassador and model pages land here.</div>' : ''}
-      <div class="panel">
+      <div class="seg seg--top" id="ambTop" role="tablist">
+        <button type="button" role="tab" data-t="list" class="${ambTab === 'list' ? 'on' : ''}">Applications <small>${all.length}</small></button>
+        <button type="button" role="tab" data-t="page" class="${ambTab === 'page' ? 'on' : ''}">Page content</button>
+      </div>
+      <div class="panel" ${ambTab === 'list' ? '' : 'hidden'}>
         <div class="toolbar">
           <div class="seg" id="ambKinds" role="tablist">
             ${kinds.map(([k, l]) => `<button type="button" role="tab" data-k="${k}" class="${ambKind === k ? 'on' : ''}">${l} <small>${k ? all.filter(a => isKind(a, k)).length : all.length}</small></button>`).join('')}
@@ -375,7 +379,7 @@ if (window.top !== window.self) { document.documentElement.innerHTML = ''; throw
         <div class="amb-admin" id="ambList"></div>
       </div>
 
-      <div class="editor">
+      <div class="editor" ${ambTab === 'page' ? '' : 'hidden'}>
         <form class="editor__form" id="apform" novalidate>
           <div class="section">
             <h3>The application pages <small>/ambassadors/ and /models/ — what people read before they apply</small></h3>
@@ -500,7 +504,67 @@ if (window.top !== window.self) { document.documentElement.innerHTML = ''; throw
     };
     draw();
 
-    /* ---- the page editor under the list ---- */
+    $('#ambTop').addEventListener('click', e => {
+      const b = e.target.closest('[data-t]'); if (!b) return;
+      ambTab = b.dataset.t; applications();
+    });
+    $('#ambKinds').addEventListener('click', e => {
+      const b = e.target.closest('[data-k]'); if (!b) return;
+      ambKind = b.dataset.k; applications();
+    });
+    $('#ambTabs').addEventListener('click', e => {
+      const b = e.target.closest('[data-f]'); if (!b) return;
+      ambFilter = b.dataset.f; applications();
+    });
+
+    $('#ambList').addEventListener('click', async e => {
+      // Photos live in a private bucket; this fetches a link that works for a few minutes.
+      const shot = e.target.closest('[data-photo]');
+      if (shot) {
+        e.preventDefault();
+        const url = await CMS.applicationPhoto(shot.dataset.photo);
+        if (url) window.open(url, '_blank', 'noopener');
+        else toast('That photo could not be opened');
+        return;
+      }
+      const b = e.target.closest('[data-act]'); if (!b) return;
+      const card = b.closest('[data-id]');
+      const a = L.find(x => String(x.id) === card.dataset.id); if (!a) return;
+
+      if (b.dataset.act === 'toggle') { ambOpen = ambOpen === a.id ? null : a.id; applications(); return; }
+
+      const note = card.querySelector('[data-note]')?.value ?? null;
+      const message = card.querySelector('[data-msg]')?.value ?? '';
+
+      if (b.dataset.act === 'delete') {
+        if (!confirm(`Delete ${a.name}'s application (${a.ref})? This can't be undone.`)) return;
+        const ok = await withWrite('Enter your admin password to delete this application.', () => CMS.deleteApplication(a.id));
+        if (!ok) return;
+        ambList = all.filter(x => x !== a); ambOpen = null;
+        toast('Application deleted'); applications(); refreshLater(); return;
+      }
+
+      if (b.dataset.act === 'note') {
+        const ok = await withWrite('Enter your admin password to save this note.',
+          () => CMS.setApplicationStatus({ id: a.id, status: a.status, note, notify: false }));
+        if (!ok) return;
+        a.note = note; toast('Note saved'); return;
+      }
+
+      const status = b.dataset.status;
+      const [label] = AMB_STATUS[status];
+      const ok = await withWrite(`Enter your admin password to set this application to "${label}". ${status === 'new' ? '' : 'The applicant is emailed.'}`,
+        () => CMS.setApplicationStatus({ id: a.id, status, message, note }));
+      if (!ok) return;
+      a.status = status; a.note = note;
+      toast(`${a.name} → ${label}. They've been emailed`);
+      applications(); refreshLater();
+    });
+
+    /* ---- the page editor, on its own tab ---- */
+    if (ambTab !== 'page') return;      // nothing below is built until that tab is open
+    try {
+
     const apForm = $('#apform');
     const apDirty = () => { $('#apDirty').hidden = false; dirty = true; apSend(); };
 
@@ -591,7 +655,11 @@ if (window.top !== window.self) { document.documentElement.innerHTML = ''; throw
         const [mod] = await uploadAll(apImg.model, 'pages');
         ap.doors.ambassador.image = amb || '';
         ap.doors.model.image = mod || '';
-        const next = { ...DATA.settings, apply: clone(ap) };
+        // The questions are part of the site's code, so they are never written back into the
+        // settings: a saved copy would pin the form to whatever the questions were that day.
+        const saving = clone(ap);
+        delete saving.sections;
+        const next = { ...DATA.settings, apply: saving };
         await CMS.saveSettings(next);
         DATA.settings = CMS.mergeSettings(next);
         await CMS.removeImages(dropped(before, [amb, mod].filter(Boolean)));
@@ -600,59 +668,13 @@ if (window.top !== window.self) { document.documentElement.innerHTML = ''; throw
       dirty = false; $('#apDirty').hidden = true;
       toast('Application pages updated');
     });
-
-    $('#ambKinds').addEventListener('click', e => {
-      const b = e.target.closest('[data-k]'); if (!b) return;
-      ambKind = b.dataset.k; applications();
-    });
-    $('#ambTabs').addEventListener('click', e => {
-      const b = e.target.closest('[data-f]'); if (!b) return;
-      ambFilter = b.dataset.f; applications();
-    });
-
-    $('#ambList').addEventListener('click', async e => {
-      // Photos live in a private bucket; this fetches a link that works for a few minutes.
-      const shot = e.target.closest('[data-photo]');
-      if (shot) {
-        e.preventDefault();
-        const url = await CMS.applicationPhoto(shot.dataset.photo);
-        if (url) window.open(url, '_blank', 'noopener');
-        else toast('That photo could not be opened');
-        return;
-      }
-      const b = e.target.closest('[data-act]'); if (!b) return;
-      const card = b.closest('[data-id]');
-      const a = L.find(x => String(x.id) === card.dataset.id); if (!a) return;
-
-      if (b.dataset.act === 'toggle') { ambOpen = ambOpen === a.id ? null : a.id; applications(); return; }
-
-      const note = card.querySelector('[data-note]')?.value ?? null;
-      const message = card.querySelector('[data-msg]')?.value ?? '';
-
-      if (b.dataset.act === 'delete') {
-        if (!confirm(`Delete ${a.name}'s application (${a.ref})? This can't be undone.`)) return;
-        const ok = await withWrite('Enter your admin password to delete this application.', () => CMS.deleteApplication(a.id));
-        if (!ok) return;
-        ambList = all.filter(x => x !== a); ambOpen = null;
-        toast('Application deleted'); applications(); refreshLater(); return;
-      }
-
-      if (b.dataset.act === 'note') {
-        const ok = await withWrite('Enter your admin password to save this note.',
-          () => CMS.setApplicationStatus({ id: a.id, status: a.status, note, notify: false }));
-        if (!ok) return;
-        a.note = note; toast('Note saved'); return;
-      }
-
-      const status = b.dataset.status;
-      const [label] = AMB_STATUS[status];
-      const ok = await withWrite(`Enter your admin password to set this application to "${label}". ${status === 'new' ? '' : 'The applicant is emailed.'}`,
-        () => CMS.setApplicationStatus({ id: a.id, status, message, note }));
-      if (!ok) return;
-      a.status = status; a.note = note;
-      toast(`${a.name} → ${label}. They've been emailed`);
-      applications(); refreshLater();
-    });
+    } catch (err) {
+      // The editor is a convenience. If it ever fails it says so here, rather than taking the
+      // applications list down with it.
+      console.error('Page editor failed to load', err);
+      $('.editor')?.insertAdjacentHTML('afterbegin',
+        `<div class="notice notice--warn"><b>The page editor could not load.</b> ${esc(err.message)}</div>`);
+    }
   }
 
   function reviews() {

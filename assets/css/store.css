@@ -1249,6 +1249,11 @@ body.ap .eyebrow { color: var(--gold-2); }
 .ap-photo__row input[type="url"] { flex: 1 1 240px; }
 .ap-photo__name { font-style: normal; font-size: 12px; color: var(--gold-3); margin-top: 8px; display: block; }
 
+/* The one thing the door cannot answer for them. */
+.ap-also { margin-top: 4px; }
+.ap-also .ap-tick { border: 1px solid var(--ap-line); background: color-mix(in srgb, var(--gold-1) 6%, transparent); }
+.ap-also .ap-tick span { font-size: 15px; color: var(--bone); }
+
 .ap-hp { position: absolute; left: -9999px; width: 1px; height: 1px; opacity: 0; }
 .ap-error {
   margin: 22px 0 0; padding: 15px 17px; border-left: 2px solid var(--red);
