@@ -124,7 +124,7 @@ function applyTheme(site = SITE) {
   // added when a theme is running, and never for anyone who has asked for less movement.
   const quiet = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
   let layer = document.querySelector('.season');
-  if (!name || quiet) { layer?.remove(); document.querySelector('.season-page')?.remove(); return name; }
+  if (!name || quiet) { layer?.remove(); document.querySelectorAll('.season-page').forEach(l => l.remove()); return name; }
   if (!layer) {
     layer = document.createElement('div');
     layer.className = 'season';
@@ -140,12 +140,85 @@ function applyTheme(site = SITE) {
     const page = document.createElement('div');
     page.className = 'season-page';
     page.setAttribute('aria-hidden', 'true');
-    page.innerHTML = '<i class="nook nook--tl"></i><i class="nook nook--tr"></i><i class="nook nook--bl"></i>'
-                   + '<i class="nook nook--br"></i><i class="swag"></i><i class="hang"></i>';
+    page.innerHTML = '<i class="nook nook--tl"></i><i class="nook nook--tr"></i>'
+                   + '<i class="nook nook--bl"></i><i class="nook nook--br"></i>';
     document.body.appendChild(page);
+    // What hangs over the top edge belongs in front of the page; what is strung in its corners
+    // belongs behind it. Two layers, because one element cannot be both.
+    const front = document.createElement('div');
+    front.className = 'season-page season-page--front';
+    front.setAttribute('aria-hidden', 'true');
+    front.innerHTML = '<i class="swag"></i><i class="hang"></i>';
+    document.body.appendChild(front);
   }
   measureChrome();
   return name;
+}
+
+// Where the ghost actually sits inside its own picture.
+//
+// A seasonal hat has to land on the ghost's head, and the artwork is not the same shape in every
+// place it is used: the mark in the header fills its frame, while the cut-out used on the closed
+// page is a square with the ghost inset by a sixth. A client can also upload their own. So the
+// artwork is measured once - the bounds of what is actually drawn - and the result is handed to
+// the stylesheet as four numbers, which the hat is then placed against. Artwork served from
+// another host cannot be read back, and the hat simply falls back to the whole frame.
+const ghostBounds = new Map();
+
+function fitGhost() {
+  document.querySelectorAll('.logo__head, .soon__head').forEach(head => {
+    const img = head.querySelector('img');
+    const src = img && (img.currentSrc || img.src);
+    if (!src) return;
+
+    const place = bounds => {
+      const box = head.getBoundingClientRect();
+      if (!box.width || !box.height || !bounds.iw) return;
+      // The picture is fitted inside the frame, so work out where it lands before placing the hat.
+      const scale = Math.min(box.width / bounds.iw, box.height / bounds.ih);
+      const dw = bounds.iw * scale, dh = bounds.ih * scale;
+      const ox = (box.width - dw) / 2, oy = (box.height - dh) / 2;
+      head.style.setProperty('--gx', ((ox + bounds.x * dw) / box.width).toFixed(4));
+      head.style.setProperty('--gy', ((oy + bounds.y * dh) / box.height).toFixed(4));
+      head.style.setProperty('--gw', ((bounds.w * dw) / box.width).toFixed(4));
+      head.style.setProperty('--gh', ((bounds.h * dh) / box.height).toFixed(4));
+    };
+
+    if (ghostBounds.has(src)) { place(ghostBounds.get(src)); return; }
+    ghostBounds.set(src, { x: 0, y: 0, w: 1, h: 1, iw: 0, ih: 0 });   // until it has been read
+
+    const probe = new Image();
+    probe.crossOrigin = 'anonymous';
+    probe.onload = () => {
+      try {
+        const n = 110;
+        const canvas = document.createElement('canvas');
+        canvas.width = canvas.height = n;
+        const ctx = canvas.getContext('2d', { willReadFrequently: true });
+        ctx.drawImage(probe, 0, 0, n, n);
+        const px = ctx.getImageData(0, 0, n, n).data;
+        let x0 = n, y0 = n, x1 = -1, y1 = -1;
+        for (let y = 0; y < n; y++) {
+          for (let x = 0; x < n; x++) {
+            const i = (y * n + x) * 4;
+            // The ghost is white; everything around it is either clear or the black it sits on.
+            if (px[i + 3] > 40 && (px[i] + px[i + 1] + px[i + 2]) / 3 > 60) {
+              if (x < x0) x0 = x; if (x > x1) x1 = x;
+              if (y < y0) y0 = y; if (y > y1) y1 = y;
+            }
+          }
+        }
+        if (x1 < 0) return;
+        const bounds = {
+          x: x0 / n, y: y0 / n, w: (x1 - x0 + 1) / n, h: (y1 - y0 + 1) / n,
+          iw: probe.naturalWidth, ih: probe.naturalHeight,
+        };
+        ghostBounds.set(src, bounds);
+        place(bounds);
+      } catch { /* artwork from another host: the hat sits against the whole frame */ }
+    };
+    probe.src = src;
+  });
 }
 
 // Garlands hang off the bottom of the header rather than from the top of the window, so they
@@ -164,11 +237,12 @@ function measureChrome() {
   const giant = document.querySelector('.footer__giant');
   if (foot) foot.style.setProperty('--floor', `${giant ? Math.round(giant.offsetHeight) : 0}px`);
 
-  const page = document.querySelector('.season-page');
-  if (page) {
+  fitGhost();
+
+  document.querySelectorAll('.season-page').forEach(page => {
     page.style.height = `${document.documentElement.scrollHeight}px`;
     page.style.setProperty('--chrome', `${Math.max(0, head ? head.offsetHeight + head.offsetTop : 0)}px`);
-  }
+  });
   if (measureChrome.watching) return;
   measureChrome.watching = true;
   let t;

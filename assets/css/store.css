@@ -726,7 +726,7 @@ body.soon::after { content: ''; position: fixed; right: -12%; bottom: -10%; widt
 
 .motion .giant__liquid {
     position: absolute; left: -25%; right: -25%; bottom: -2%; height: 125%;
-    background: var(--hot);
+    background: var(--pour-giant, var(--hot));
     transform: translate3d(0, 100%, 0);                   /* parked below the letters */
     transition: transform 2.4s cubic-bezier(.33, .9, .3, 1);   /* the pour */
     will-change: transform;
@@ -751,7 +751,7 @@ body.soon::after { content: ''; position: fixed; right: -12%; bottom: -10%; widt
     /* The surface rolls up to 10px; the fill reaches well below it so body and surface never
        come apart, whatever point the roll is at. */
     content: ''; position: absolute; bottom: -18px; left: 0; height: calc(100% + 18px); width: 300%;
-    background: var(--hot);
+    background: var(--pour-giant, var(--hot));
     -webkit-mask-image: var(--wave); mask-image: var(--wave);
     -webkit-mask-repeat: repeat-x; mask-repeat: repeat-x;
     -webkit-mask-position: 0 bottom; mask-position: 0 bottom;
@@ -959,8 +959,13 @@ body.soon::after { content: ''; position: fixed; right: -12%; bottom: -10%; widt
 
 /* The page layer: corners that belong to the page and scroll with it. Behind everything that
    can be read or clicked, so it can never get in the way. */
+/* Behind everything on the page. body is isolated so a negative layer still sits above the
+   page's own background: the webs hang in the corners of the page like scenery, and nothing
+   anyone needs to read or click is ever covered by them. */
+body { isolation: isolate; }
 .season-page {
-  position: absolute; left: 0; top: 0; width: 100%; z-index: 1; pointer-events: none;
+  position: absolute; left: 0; top: 0; width: 100%; z-index: -1; pointer-events: none;
+  /* ...except the layer that hangs over the top edge, which belongs in front. */
   overflow: hidden; --chrome: 0px;
   --nook: clamp(120px, 17vw, 300px);
   --edge: max(var(--gutter), calc(50vw - var(--max) / 2));
@@ -991,6 +996,7 @@ body.soon::after { content: ''; position: fixed; right: -12%; bottom: -10%; widt
   animation: spx-pendulum 7.5s cubic-bezier(.45, 0, .55, 1) infinite alternate;
   filter: drop-shadow(0 10px 14px rgba(0, 0, 0, .45));
 }
+.season-page--front { z-index: 3; height: auto !important; overflow: visible; }
 .season-page > .nook { position: absolute; display: none; width: var(--nook); aspect-ratio: 1; }
 .season-page > .nook--tl { top: var(--chrome); left: 0; }
 .season-page > .nook--tr { top: var(--chrome); right: 0; transform: scaleX(-1); }
@@ -1016,7 +1022,9 @@ body.soon::after { content: ''; position: fixed; right: -12%; bottom: -10%; widt
 /* z-index -1 keeps the props above the footer's background and behind everything written on it,
    so a link, a payment badge or a line of small print is never covered by a snowman. */
 [data-theme] .footer::before, [data-theme] .footer::after {
-  content: ''; position: absolute; bottom: var(--floor, 0px); z-index: -1; pointer-events: none;
+  /* Standing in the band the big wordmark occupies, flanking it, rather than up among the
+     footer's links and small print. */
+  content: ''; position: absolute; bottom: calc(var(--floor, 0px) * .42); z-index: -1; pointer-events: none;
   background: center bottom / contain no-repeat;
   width: var(--prop, clamp(86px, 10vw, 168px)); height: var(--prop-h, clamp(104px, 12vw, 200px));
   --edge: max(var(--gutter), calc(50vw - var(--max) / 2));
@@ -1167,7 +1175,8 @@ body.soon::after { content: ''; position: fixed; right: -12%; bottom: -10%; widt
 /* Bats crossing high up: the traveller carries them sideways, the artwork rises and falls, and
    two wing positions cross-fade into a flap. */
 [data-theme="halloween"] .season__c {
-  display: block; top: clamp(110px, 18vh, 230px); left: 0; width: clamp(54px, 6vw, 92px); aspect-ratio: 120 / 80;
+  display: block; top: clamp(74px, 10vh, 130px); left: 0; width: clamp(50px, 5vw, 80px); aspect-ratio: 120 / 80;
+  opacity: .75;
   animation: spx-cross 23s linear infinite;
 }
 [data-theme="halloween"] .season__c::before,
@@ -1201,14 +1210,43 @@ body.soon::after { content: ''; position: fixed; right: -12%; bottom: -10%; widt
 [data-theme="halloween"] .rider__img::before,
 [data-theme="halloween"] .report::before,
 [data-theme="halloween"] .rv-card::before {
-  content: ''; position: absolute; top: 0; left: 0; width: 84px; height: 84px; z-index: 3;
+  content: ''; position: absolute; top: 0; right: 0; width: 84px; height: 84px; z-index: 1;
   background: var(--art-web-sm) top left / contain no-repeat;
-  opacity: .34; pointer-events: none;
+  transform: scaleX(-1);                          /* the badges live in the other corner */
+  opacity: .3; pointer-events: none;
 }
 [data-theme="halloween"] .card:nth-child(even) .card__media::before,
 [data-theme="halloween"] .rider:nth-child(even) .rider__img::before {
-  left: auto; right: 0; transform: scaleX(-1);
+  right: auto; left: 0; transform: none;
 }
+/* Hover anything and blood runs down from its top edge - quick on the way down, and it drains
+   back when you leave. Transform only, so it costs nothing even across a grid of cards. */
+[data-theme="halloween"] { --pour-giant: #8A1210; }
+.motion[data-theme="halloween"] .card::after,
+.motion[data-theme="halloween"] .rider::after,
+.motion[data-theme="halloween"] .report::after,
+.motion[data-theme="halloween"] .rv-card::after,
+.motion[data-theme="halloween"] .perks > div::after {
+  content: ''; position: absolute; left: 0; right: 0; top: -1px; height: clamp(26px, 3vw, 44px);
+  z-index: 4; pointer-events: none;
+  background: var(--art-drips) left top / 260px 100% repeat-x;
+  transform: scaleY(0); transform-origin: top center;
+  transition: transform .9s cubic-bezier(.4, 0, .2, 1);
+}
+.motion[data-theme="halloween"] .card:is(:hover, .is-held)::after,
+.motion[data-theme="halloween"] .rider:is(:hover, .is-held)::after,
+.motion[data-theme="halloween"] .report:is(:hover, .is-held)::after,
+.motion[data-theme="halloween"] .rv-card:is(:hover, .is-held)::after,
+.motion[data-theme="halloween"] .perks > div:is(:hover, .is-held)::after {
+  transform: scaleY(1);
+  transition: transform .75s cubic-bezier(.22, .9, .3, 1);
+}
+/* A button is small, so it gets a thinner run of it over the wave it already fills with. */
+.motion[data-theme="halloween"] .btn { --pour: #8A1210; }
+.motion[data-theme="halloween"] .btn--ghost,
+.motion[data-theme="halloween"] .btn--light,
+.motion[data-theme="halloween"] .served .btn { --pour: #A3161A; }
+
 /* Lanterns lit on the ground, each one guttering to its own rhythm. */
 [data-theme="halloween"] .footer::before {
   background-image: var(--art-lantern); --prop-h: clamp(90px, 10vw, 160px);
@@ -1356,56 +1394,64 @@ body.soon::after { content: ''; position: fixed; right: -12%; bottom: -10%; widt
   filter: drop-shadow(0 0 8px rgba(255, 255, 255, .5));
 }
 @keyframes spx-starlight { from { opacity: .55; } to { opacity: 1; } }
-[data-theme="australia"] .footer::before { background-image: var(--art-wattle); --prop: clamp(104px, 12vw, 196px); }
-[data-theme="australia"] .footer::after  { background-image: var(--art-wattle); --prop: clamp(104px, 12vw, 196px); transform: scaleX(-1); opacity: .9; }
+[data-theme="australia"] .footer::before,
+[data-theme="australia"] .footer::after {
+  background-image: var(--art-cross); background-position: center;
+  --prop: clamp(66px, 7vw, 120px); --prop-h: clamp(76px, 8vw, 140px);
+  filter: drop-shadow(0 0 10px rgba(255, 255, 255, .45));
+  animation: spx-starlight 6s ease-in-out infinite alternate;
+}
+[data-theme="australia"] .footer::after { animation-delay: -3s; opacity: .85; }
 
 /* ---------- the ghost wears the season ----------
-   The hat is placed on the ghost's own box and measured in percentages of it, so it sits on the
-   head whether the mark is 26px wide on a phone, 34px in the header, 50px in the footer or
-   60px on the closed page. Each hat has its own proportions, so each sets its own figures. */
+   store.js measures where the ghost is actually drawn inside its picture and leaves the answer
+   here as --gx/--gy/--gw/--gh (left, top, width, height, as fractions of the frame). The hat is
+   then placed against the ghost itself rather than the frame, so it lands on the head whether
+   the mark fills its file, sits inset in a square, or is artwork the client uploaded later -
+   and at any size, because every figure below is a fraction. */
 .logo { position: relative; }
+.logo__head, .soon__head { --gx: 0; --gy: 0; --gw: 1; --gh: 1; }
 [data-theme] .logo__head::after,
 [data-theme] .soon__head::after {
   content: ''; position: absolute; z-index: 2; pointer-events: none;
   background: center bottom / contain no-repeat;
-  left: var(--hat-x); top: var(--hat-y); width: var(--hat-w); height: var(--hat-h);
+  left:   calc((var(--gx) + var(--hat-x) * var(--gw)) * 100%);
+  top:    calc((var(--gy) + var(--hat-y) * var(--gh)) * 100%);
+  width:  calc(var(--hat-w) * var(--gw) * 100%);
+  height: calc(var(--hat-h) * var(--gh) * 100%);
   transform: rotate(var(--hat-r, -8deg));
   transform-origin: 60% 100%;
 }
 [data-theme="christmas"] .logo__head, [data-theme="christmas"] .soon__head {
-  --hat-x: -18%; --hat-y: -26%; --hat-w: 118%; --hat-h: 48%; --hat-r: -4deg;
+  --hat-x: -.17; --hat-y: -.27; --hat-w: 1.18; --hat-h: .5; --hat-r: -4deg;
 }
 [data-theme="halloween"] .logo__head, [data-theme="halloween"] .soon__head {
-  --hat-x: -16%; --hat-y: -54%; --hat-w: 132%; --hat-h: 58%; --hat-r: -5deg;
+  --hat-x: -.16; --hat-y: -.52; --hat-w: 1.32; --hat-h: .58; --hat-r: -5deg;
 }
 [data-theme="easter"] .logo__head, [data-theme="easter"] .soon__head {
-  --hat-x: 6%;   --hat-y: -47%; --hat-w: 88%;  --hat-h: 74%; --hat-r: -3deg;
+  --hat-x: .06; --hat-y: -.47; --hat-w: .88; --hat-h: .74; --hat-r: -3deg;
 }
 [data-theme="birthday"] .logo__head, [data-theme="birthday"] .soon__head {
-  --hat-x: 16%;  --hat-y: -43%; --hat-w: 68%;  --hat-h: 64%; --hat-r: -9deg;
-}
-/* Australia Day: the ghost wears the flag rather than a hat. The flag is laid over the ghost's
-   own box and multiplied into it, so it colours the white artwork and leaves the black around
-   it alone - the mark keeps its exact shape, at any size. */
-[data-theme="australia"] .logo__head, [data-theme="australia"] .soon__head {
-  --hat-x: 0; --hat-y: 0; --hat-w: 100%; --hat-h: 100%; --hat-r: 0deg;
+  --hat-x: .16; --hat-y: -.43; --hat-w: .68; --hat-h: .64; --hat-r: -9deg;
 }
 /* On Australia Day the ghost is the flag. Rather than tint the artwork - which would leave the
-   black square it is drawn on showing through, or depend on how a browser blends - the mark is
-   repainted: the flag is cut to the ghost's outline using the cut-out version of the same
-   artwork, and the picture underneath simply steps aside. Sharp at any size, no box, no blend.
-   The address comes from the brand settings, so it follows the client's own artwork. */
+   black square it is drawn on showing through - the mark is repainted: the flag is cut to the
+   ghost's outline using the cut-out version of the same artwork, and the picture underneath
+   steps aside. Sharp at any size, no box, no blend. */
+[data-theme="australia"] .logo__head, [data-theme="australia"] .soon__head {
+  --hat-x: 0; --hat-y: 0; --hat-w: 1; --hat-h: 1; --hat-r: 0deg;
+}
 [data-theme="australia"] .logo__head img,
 [data-theme="australia"] .soon__head img { visibility: hidden; }
 [data-theme="australia"] .logo__head::after,
 [data-theme="australia"] .soon__head::after {
+  left: 0; top: 0; width: 100%; height: 100%;          /* the flag takes the whole frame */
   background-size: cover; background-position: center;
   -webkit-mask-image: var(--ghost-clear); mask-image: var(--ghost-clear);
   -webkit-mask-size: contain; mask-size: contain;
   -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat;
   -webkit-mask-position: center; mask-position: center;
 }
-
 [data-theme="christmas"] .logo__head::after, [data-theme="christmas"] .soon__head::after { background-image: var(--art-hat-santa); }
 [data-theme="halloween"] .logo__head::after, [data-theme="halloween"] .soon__head::after { background-image: var(--art-hat-witch); }
 [data-theme="easter"]    .logo__head::after, [data-theme="easter"] .soon__head::after    { background-image: var(--art-hat-ears); }
