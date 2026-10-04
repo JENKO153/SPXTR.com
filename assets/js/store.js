@@ -290,7 +290,8 @@ function showComingSoon() {
   const c = { ...(CMS.mergeSettings({}).comingSoon || {}), ...(SITE.comingSoon || {}) };
   // The application pages stay open while the store is closed, so the curtain carries the way in.
   const apply = { ...(CMS.mergeSettings({}).apply || {}), ...(SITE.apply || {}) };
-  const ways = ['ambassador', 'model'].map(k => apply[k]).filter(w => w && w.on !== false);
+  const ways = apply.on === false ? []
+    : ['ambassador', 'model'].map(k => apply.doors?.[k]).filter(Boolean);
   const ig = instagramLink();
   document.title = `${c.title || 'Coming soon'} — ${STORE.name}`;
   document.body.className = 'soon';

@@ -38,6 +38,7 @@
     const hint = o.hint ? `<em class="ap-field__hint">${esc(o.hint)}</em>` : '';
     const wide = o.half ? ' ap-field--half' : '';
 
+    const step = o._i ?? 0;
     if (o.type === 'radio' || o.type === 'checks' || o.type === 'consent') {
       const single = o.type === 'radio';
       const cls = o.type === 'consent' ? 'ap-consent' : 'ap-chips';
@@ -47,14 +48,14 @@
                  ${single && o.required ? 'required' : ''} ${o.role ? 'data-role' : ''}>
           <span>${esc(opt)}</span>
         </label>`).join('');
-      return `<div class="ap-field ap-field--full" data-name="${name}">${head}${hint}
+      return `<div class="ap-field ap-field--full rise" style="--step:${step}" data-name="${name}">${head}${hint}
         <div class="${cls}">${boxes}</div></div>`;
     }
 
     if (o.type === 'photo') {
       // Either works: attach the file, or paste a link to it. Whichever they do, the other is
       // left alone — nobody should have to make an album public to apply.
-      return `<div class="ap-field ap-field--full ap-photo" data-name="${name}">${head}${hint}
+      return `<div class="ap-field ap-field--full ap-photo rise" style="--step:${step}" data-name="${name}">${head}${hint}
         <div class="ap-photo__row">
           <label class="ap-photo__pick">
             <input type="file" name="${name}_file" accept="image/jpeg,image/png,image/webp">
@@ -71,18 +72,20 @@
       : `<input name="${name}" type="${o.type || 'text'}" maxlength="${o.max || 120}" ${o.required ? 'required' : ''}
            ${o.type === 'number' ? 'inputmode="numeric"' : ''} ${o.autocomplete ? `autocomplete="${o.autocomplete}"` : ''}
            placeholder="${esc(o.placeholder || '')}">`;
-    return `<label class="ap-field${wide}" data-name="${name}">${head}${control}${hint}</label>`;
+    return `<label class="ap-field${wide} rise" style="--step:${step}" data-name="${name}">${head}${control}${hint}
+      <i class="ap-field__scan" aria-hidden="true"></i></label>`;
   }
 
   const sections = (A.sections || []);
   const parts = sections.map(([title, hint, when, fields, footnote], i) => `
     <fieldset class="ap-part" id="part-${i + 1}" data-part="${i + 1}" ${when ? `data-when="${when}"` : ''}>
-      <legend>
-        <span class="ap-part__no">${n2(i)}</span>
+      <span class="ap-part__ghost" aria-hidden="true">${n2(i)}</span>
+      <legend class="rise">
+        <span class="ap-part__no">${n2(i)} / ${n2((A.sections || []).length - 1)}</span>
         <b>${esc(title)}</b>
         <em>${esc(hint)}</em>
       </legend>
-      <div class="ap-fields">${fields.map(([n, l, o]) => fieldHtml(n, l, o)).join('')}</div>
+      <div class="ap-fields">${fields.map(([n, l, o], j) => fieldHtml(n, l, { ...o, _i: j })).join('')}</div>
       ${footnote ? `<p class="ap-note">${esc(footnote)}</p>` : ''}
     </fieldset>`).join('');
 
@@ -129,6 +132,11 @@
           <span class="ap-rail__fill"><i></i></span>
         </aside>
         <form class="ap-form" id="apply-form" novalidate>
+          <header class="ap-plate rise">
+            <span><b>File</b>${esc(A.intake)}</span>
+            <span><b>Applying as</b><em id="ap-plate-role">${esc(door.role)}</em></span>
+            <span><b>Status</b><em id="ap-plate-state">Open</em></span>
+          </header>
           ${parts}
           <input type="text" name="website" tabindex="-1" autocomplete="off" aria-hidden="true" class="ap-hp">
           <p class="ap-error" id="apply-error" hidden></p>
@@ -160,6 +168,7 @@
     return v.includes('Both') || (kind === 'model' ? /model/i.test(v) : /ambassador/i.test(v));
   };
   const shapeForm = () => {
+    const plate = $('#ap-plate-role'); if (plate) plate.textContent = roleNow();
     $$('[data-when]').forEach(el => {
       const show = wants(el.dataset.when);
       el.hidden = !show;

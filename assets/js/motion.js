@@ -206,7 +206,7 @@
      than a rectangle growing. Mouse and trackpad only: on a touchscreen there is no pointer to
      follow, and a tilt that only fires on tap feels broken.
      One listener for the whole page, and the work happens on an animation frame. */
-  const TILT = '.card, .rider, .report, .rv-card, .disc a, .cat, .perks > div, .line-item, .btn, .link-arrow';
+  const TILT = '.card, .rider, .report, .rv-card, .disc a, .cat, .perks > div, .line-item, .btn, .link-arrow, .ap-perk';
   const HOLD = TILT + ', .footer__giant';          // these also take the hover styling under a finger
   let tilted = null, pending = null;
 
