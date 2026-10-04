@@ -78,13 +78,16 @@ const DEFAULT_SETTINGS = {
     marquee: ['Ambassadors', 'Models', 'Motorsport', 'Fearless crew', 'Content', 'Events'],
     closing: 'Every application gets an answer. You will hear from us at each stage by email.',
     smallprint: 'Applying does not guarantee selection, paid work or ongoing opportunities. Any payment, gifted product, commission or campaign arrangement is confirmed before each opportunity.',
+    inviteTitle: 'This is an invitation to be considered.',
+    inviteText: 'Take your time with it. Every application is read by the crew — not sorted by a machine, not scored on follower count. Say what you actually do and why it matters to you.',
+    lookingTitle: 'Who gets in.',
 
     /* The two ways in. Each sets the opening copy and preselects the role, and both lead to the
        same form. */
     doors: {
       ambassador: {
-        path: 'ambassadors/', role: 'SPXTR Brand Ambassador',
-        eyebrow: 'Ambassador programme', title: 'Ride for\nSPXTR.',
+        path: 'ambassadors/', role: 'SPXTR Brand Ambassador', image: '',
+        eyebrow: 'Ambassador programme', title: 'Ride for\nSPXTR.', perksTitle: 'Backed properly.',
         cta: 'Apply to represent', ctaNote: 'Riders, racers, lifters and builders — put your name forward before we open.',
         perks: [
           ['Kit, every drop', 'Seasonal kit before it goes on sale, in your size, replaced when you destroy it.'],
@@ -94,8 +97,8 @@ const DEFAULT_SETTINGS = {
         ],
       },
       model: {
-        path: 'models/', role: 'SPXTR Model',
-        eyebrow: 'Model casting', title: 'Front the\nseason.',
+        path: 'models/', role: 'SPXTR Model', image: '',
+        eyebrow: 'Model casting', title: 'Front the\nseason.', perksTitle: 'Paid properly.',
         cta: 'Apply to model', ctaNote: 'Shot on real people. Put your book in front of us.',
         perks: [
           ['Paid, properly', 'Terms agreed before every shoot. Paid, gifted, commission or affiliate — you are told which, first.'],

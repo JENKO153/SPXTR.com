@@ -100,7 +100,8 @@
       <div class="ap-hero__bg" aria-hidden="true"></div>
       <div class="ap-hero__inner wrap">
         <span class="ap-meta rise">${(A.scarcity || []).map(x => `<b>${esc(x)}</b>`).join('<i>//</i>')}</span>
-        <h1 class="display ap-hero__title rise">${String(door.title || '').split('\n').map(esc).join('<br>')}</h1>
+        <h1 class="display ap-hero__title">${String(door.title || '').split('\n')
+          .map((l, i) => `<span><i style="--n:${i}">${esc(l)}</i></span>`).join('')}</h1>
         <p class="ap-hero__lead rise">${esc(A.lead || '')}</p>
         <div class="ap-hero__acts rise">
           <a class="btn" href="#apply">${esc(door.cta)}</a>
@@ -111,18 +112,26 @@
     </section>
 
     <section class="wrap ap-sec">
-      <div class="section-head"><span class="eyebrow">Sec. 01 // What you get</span><h2 class="display">${DOOR === 'model' ? 'Paid properly.' : 'Backed properly.'}</h2></div>
+      <div class="section-head"><span class="eyebrow">Sec. 01 // What you get</span><h2 class="display">${esc(door.perksTitle || (DOOR === 'model' ? 'Paid properly.' : 'Backed properly.'))}</h2></div>
+      <hr class="ap-rule rise" style="margin-bottom:34px">
       <div class="ap-perks">${perks}</div>
     </section>
 
     <section class="wrap ap-sec">
-      <div class="section-head"><span class="eyebrow">Sec. 02 // What we look for</span><h2 class="display">Who gets in.</h2></div>
-      <ul class="ap-list">${(A.looking || []).map(l => `<li class="rise">${esc(l)}</li>`).join('')}</ul>
+      <div class="section-head"><span class="eyebrow">Sec. 02 // What we look for</span><h2 class="display">${esc(A.lookingTitle || 'Who gets in.')}</h2></div>
+      <hr class="ap-rule rise" style="margin-bottom:34px">
+      <ul class="ap-list">${(A.looking || []).map((l, i) => `<li class="rise" style="--step:${i}">${esc(l)}</li>`).join('')}</ul>
     </section>
 
     <section class="wrap ap-sec" id="apply">
       <div class="section-head"><span class="eyebrow">Sec. 03 // The application</span><h2 class="display">Put your name forward.</h2></div>
-      <p class="ap-smallprint">${esc(A.smallprint || '')}</p>
+      <div class="ap-invite rise">
+        <span class="ap-invite__eyebrow">${esc(A.intake)} // by application</span>
+        <h3>${esc(A.inviteTitle || 'This is an invitation to be considered.')}</h3>
+        <p>${esc(A.inviteText || '')}</p>
+        <hr class="ap-rule" style="margin:22px 0 0">
+        <p class="ap-smallprint">${esc(A.smallprint || '')}</p>
+      </div>
       <div class="ap-dossier">
         <aside class="ap-rail" aria-hidden="true">
           <span class="ap-rail__file">${esc(A.intake)}</span>
@@ -149,8 +158,25 @@
     </section>`;
 
   wireBrandFallbacks();   // motion.js watches for new content and reveals it on its own
+
+  // The opening stages itself in: the headline lines are masked until the hero is up.
+  requestAnimationFrame(() => $('.ap-hero')?.classList.add('in'));
+
+  // How far down the page you are, drawn in gold across the top. motion.js already measures
+  // this for its own read line, so this only has to follow it.
+  const bar = document.createElement('div');
+  bar.className = 'ap-progress';
+  bar.setAttribute('aria-hidden', 'true');
+  document.body.appendChild(bar);
+  const follow = () => {
+    const max = document.documentElement.scrollHeight - innerHeight;
+    bar.style.setProperty('--read', max > 0 ? (scrollY / max).toFixed(4) : 0);
+  };
+  addEventListener('scroll', follow, { passive: true });
+  addEventListener('resize', follow);
+  follow();
   fillTicker($('#ap-ticker'), (A.marquee || []).map(w => `<span>${esc(w)}</span>`).join(''));
-  const shot = safeUrl(SITE.hero?.image || SITE.newsletter?.image || '');
+  const shot = safeUrl(door.image || SITE.hero?.image || SITE.newsletter?.image || '');
   if (shot) $('.ap-hero__bg').style.backgroundImage = `url("${shot}")`;
 
   const form = $('#apply-form'), errorBox = $('#apply-error'), submit = $('#apply-submit');

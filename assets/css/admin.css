@@ -442,3 +442,8 @@ tbody tr:last-child td { border: 0; }
 }
 .amb-admin__group h5 { margin: 12px 0 4px; }
 .amb-admin__group p { margin: 0; color: var(--text); font-size: 14px; line-height: 1.6; white-space: pre-wrap; }
+
+/* A section nested inside another, for the two application pages under one heading. */
+.section--sub { margin: 18px 0 0; padding: 18px; border: 1px solid var(--line); background: var(--bg-2); }
+.section--sub h4 { margin: 0 0 14px; font: 600 13px var(--cond); letter-spacing: .12em; text-transform: uppercase; color: var(--bone); }
+.section--sub h4 small { font-family: var(--mono); font-size: 11px; letter-spacing: .06em; color: var(--muted); text-transform: none; margin-left: 8px; }
