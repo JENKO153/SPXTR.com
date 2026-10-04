@@ -786,8 +786,13 @@ begin
   if shut and not adm and not (p_key is not null and btrim(p_key) <> ''
       and exists (select 1 from public.security_settings s where s.id = 1
                   and lower(replace(btrim(s.preview_key), '-', '')) = lower(replace(btrim(p_key), '-', '')))) then
+    -- A closed store gives nothing away: only what the curtain itself needs, plus the wording
+    -- for /ambassadors/ and /models/, which stay open while the rest of the site is shut and
+    -- would otherwise fall back to the built-in defaults instead of what the admin has set.
     return jsonb_build_object('coming_soon', true, 'settings', jsonb_build_object(
       'comingSoon', coalesce(settings -> 'comingSoon', '{}'::jsonb),
+      'apply', coalesce(settings -> 'apply', '{}'::jsonb),
+      'themes', coalesce(settings -> 'themes', '{}'::jsonb),
       'theme', coalesce(settings -> 'theme', '{}'::jsonb),
       'instagram', coalesce(settings -> 'instagram', '"@spxtr"'::jsonb),
       'instagramUrl', coalesce(settings -> 'instagramUrl', '""'::jsonb)));
