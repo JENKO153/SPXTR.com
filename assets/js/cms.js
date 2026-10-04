@@ -361,6 +361,30 @@
         if (error) return '';
         return data?.signedUrl || '';
       },
+      // Setting an accepted applicant up: what they were taken on as, their code (created in
+      // Stripe when asked), and the onboarding ticks.
+      async setCrew(crew) {
+        const { data: { session } } = await admin().auth.getSession();
+        const res = await fetch(`${cfg.supabaseUrl}/functions/v1/applications`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', apikey: cfg.supabaseKey, Authorization: `Bearer ${session?.access_token || cfg.supabaseKey}` },
+          body: JSON.stringify({ crew }),
+        }).catch(() => null);
+        const body = await res?.json().catch(() => null);
+        if (!res?.ok) throw new Error(body?.error || 'Could not save that.');
+        return body;
+      },
+      async sendWelcome(id, message = '') {
+        const { data: { session } } = await admin().auth.getSession();
+        const res = await fetch(`${cfg.supabaseUrl}/functions/v1/applications`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', apikey: cfg.supabaseKey, Authorization: `Bearer ${session?.access_token || cfg.supabaseKey}` },
+          body: JSON.stringify({ welcome: { id, message } }),
+        }).catch(() => null);
+        const body = await res?.json().catch(() => null);
+        if (!res?.ok) throw new Error(body?.error || 'Could not send that welcome.');
+        return body;
+      },
       async deleteApplication(id) {
         const { error } = await admin().rpc('application_delete', { app_id: id });
         fail(error, 'Could not delete that application');
@@ -653,6 +677,29 @@
         return { ok: true, ref, emailed: false };
       },
       applicationList: async () => read('applications', []),
+      async setCrew({ id, role, code, percent, kit, create }) {
+        guard();
+        const list = read('applications', []);
+        const it = list.find(x => x.id === id); if (!it) throw new Error('Application not found');
+        it.crew = { ...(it.crew || {}) };
+        if (role) it.crew.role = role;
+        if (code !== undefined) it.crew.code = String(code).toUpperCase().replace(/[^A-Z0-9]/g, '');
+        if (percent !== undefined) it.crew.percent = Number(percent) || 0;
+        if (kit !== undefined) it.crew.kit_sent_at = kit ? new Date().toISOString() : null;
+        if (create) it.crew.code_created_at = new Date().toISOString();
+        write('applications', list);
+        log('update', 'applications', { name: `Crew details for ${it.name} (${it.ref})` });
+        return { ok: true, madeInStripe: !!create, application: it };
+      },
+      async sendWelcome(id) {
+        guard();
+        const list = read('applications', []);
+        const it = list.find(x => x.id === id); if (!it) throw new Error('Application not found');
+        it.crew = { ...(it.crew || {}), welcomed_at: new Date().toISOString() };
+        write('applications', list);
+        log('update', 'applications', { name: `Welcome sent to ${it.name}` });
+        return { ok: true, emailed: false };
+      },
       async setApplicationStatus({ id, status, note = null }) {
         guard();
         const list = read('applications', []);

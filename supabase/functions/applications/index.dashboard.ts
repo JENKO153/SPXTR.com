@@ -79,6 +79,14 @@ const HEAD = "'Big Shoulders Stencil Display', Impact, 'Arial Black', 'Helvetica
 const BODY = "'Helvetica Neue', Helvetica, Arial, sans-serif";
 const MONO = "'JetBrains Mono', 'SFMono-Regular', Menlo, Consolas, monospace";
 
+// The application emails are gold rather than the brand accent, to match the pages people
+// applied through. Email clients can't be trusted with gradients or background-clip, so this is
+// a solid leaf colour with a paler highlight for rules and edges - it reads the same way and
+// renders everywhere.
+const GOLD = '#D9AE43';
+const GOLD_LIGHT = '#F2DFA4';
+const GOLD_DIM = '#6B5219';
+
 const orderNo = o => `SPX-${o.number}`;
 const firstName = o => String(o.name || '').trim().split(/\s+/)[0] || '';
 const orderLink = (site, o) => (o.access_key ? `${site}/order/?o=${o.number}&k=${encodeURIComponent(o.access_key)}` : '');
@@ -96,6 +104,15 @@ function button(href, label, accent, solid = true) {
       <a href="${esc(href)}" style="display:inline-block;padding:14px 22px;font:700 13px/1 ${BODY};letter-spacing:.14em;text-transform:uppercase;color:${fg};text-decoration:none">${esc(label)}</a>
     </td></tr></table>`;
 }
+
+// A bordered plate, the way the reference is stamped on the page.
+const plate = (label, value, sub) => `
+  <table role="presentation" cellpadding="0" cellspacing="0" style="margin:26px 0 6px"><tr><td
+    style="border:2px solid ${GOLD};padding:16px 24px;background:#141109">
+    <div style="font:500 10px/1.4 ${MONO};letter-spacing:.2em;text-transform:uppercase;color:${C.muted};margin:0 0 6px">${esc(label)}</div>
+    <div style="font:500 22px/1.2 ${MONO};letter-spacing:.1em;color:${C.bone}">${esc(value)}</div>
+    ${sub ? `<div style="font:500 10px/1.4 ${MONO};letter-spacing:.18em;text-transform:uppercase;color:${GOLD};margin:6px 0 0">${esc(sub)}</div>` : ''}
+  </td></tr></table>`;
 
 const eyebrow = (text, accent) => `<div style="font:500 12px/1.4 ${MONO};letter-spacing:.14em;text-transform:uppercase;color:${accent};margin:0 0 10px">${esc(text)}</div>`;
 const label = text => `<div style="font:500 11px/1.4 ${MONO};letter-spacing:.14em;text-transform:uppercase;color:${C.muted};margin:0 0 6px">${esc(text)}</div>`;
@@ -432,7 +449,7 @@ const STATUS_COPY = {
   declined: {
     eyebrow: 'Application // closed',
     title: 'Not this<br>time.',
-    intro: 'We can only take a handful of riders each season, and this round is full.',
+    intro: 'We can only take a handful of people each season, and this round is full.',
     line: 'This isn\'t a no forever. Keep sending it, keep building, and come back to us next season.',
   },
   new: {
@@ -446,14 +463,13 @@ const STATUS_COPY = {
 // To the applicant, the moment they apply.
 function applicationAppliedEmail({ site, accent, instagram, kind, ref, name }) {
   const what = kind === 'model' ? 'model' : 'ambassador';
-  accent = readable(accent);
+  accent = GOLD;                                   // these are the gold ones
   const body = `
-    ${label('Your reference')}
-    <div style="font:500 20px/1.2 ${MONO};letter-spacing:.08em;color:${C.bone};margin:0 0 20px">${esc(ref)}</div>
-    <div style="margin:0 0 16px;padding:18px 20px;background:${C.panel};border-left:4px solid ${accent};font:400 15px/1.6 ${BODY};color:${C.bone}">
+    <div style="margin:0 0 16px;padding:18px 20px;background:${C.panel};border-left:2px solid ${GOLD};font:400 15px/1.6 ${BODY};color:${C.bone}">
       Every application is read by the crew, not a robot. We'll email you at each stage, so you're
       never left wondering where it got to.
-    </div>`;
+    </div>
+    ${plate('Your reference', ref, 'Quote this if you get in touch')}`;
   return {
     subject: `We've got your application (${ref})`,
     html: layout({
@@ -471,7 +487,7 @@ function applicationAppliedEmail({ site, accent, instagram, kind, ref, name }) {
 // To the crew, so an application is never missed.
 function applicationAlertEmail({ site, accent, app }) {
   const what = app.kind === 'model' ? 'Model' : 'Ambassador';
-  accent = readable(accent);
+  accent = GOLD;
   const row = (k, v) => (v ? `<tr><td style="padding:6px 14px 6px 0;font:500 11px/1.5 ${MONO};letter-spacing:.1em;text-transform:uppercase;color:${C.muted};white-space:nowrap;vertical-align:top">${esc(k)}</td>
     <td style="padding:6px 0;font:400 14px/1.55 ${BODY};color:${C.bone}">${esc(v)}</td></tr>` : '');
   const body = `
@@ -494,7 +510,7 @@ function applicationAlertEmail({ site, accent, app }) {
     subject: `${what} application — ${app.name} (${app.ref})`,
     html: layout({
       site, accent,
-      preheader: `${app.name} wants to ${app.kind === 'model' ? 'model' : 'ride'} for SPXTR.`,
+      preheader: `${app.name} wants to ${app.kind === 'model' ? 'model' : 'represent'} SPXTR.`,
       eyebrowText: `${what} // ${app.ref}`,
       title: 'New<br>application.',
       intro: `${app.name} has applied to the ${what.toLowerCase()} programme.`,
@@ -506,13 +522,12 @@ function applicationAlertEmail({ site, accent, app }) {
 
 // To the applicant whenever the crew moves their application along.
 function applicationStatusEmail({ site, accent, instagram, kind, ref, name, status, message }) {
-  accent = readable(accent);
+  accent = GOLD;
   const copy = STATUS_COPY[status] || STATUS_COPY.new;
   const body = `
-    ${message ? `<div style="margin:0 0 16px;padding:18px 20px;background:${C.panel};border-left:4px solid ${accent};font:400 15px/1.6 ${BODY};color:${C.bone};white-space:pre-wrap">${esc(message)}</div>` : ''}
+    ${message ? `<div style="margin:0 0 16px;padding:18px 20px;background:${C.panel};border-left:2px solid ${GOLD};font:400 15px/1.6 ${BODY};color:${C.bone};white-space:pre-wrap">${esc(message)}</div>` : ''}
     <div style="margin:0 0 18px;font:400 15px/1.6 ${BODY};color:${C.text}">${copy.line}</div>
-    ${label('Your reference')}
-    <div style="font:500 18px/1.2 ${MONO};letter-spacing:.08em;color:${C.bone}">${esc(ref)}</div>
+    ${plate('Your reference', ref)}
     ${status === 'accepted' ? `<div style="margin:22px 0 4px">${button(`${site}/`, 'See what you\'re repping', accent)}</div>` : ''}`;
   return {
     subject: status === 'accepted' ? `You're in — welcome to the SPXTR crew (${ref})`
@@ -529,7 +544,41 @@ function applicationStatusEmail({ site, accent, instagram, kind, ref, name, stat
     text: `${copy.intro}\n\n${message ? message + '\n\n' : ''}${copy.line}\n\nReference: ${ref}`,
   };
 }
-  return { applicationAlertEmail, applicationAppliedEmail, applicationStatusEmail, confirmationEmail, esc, launchLiveEmail, launchWelcomeEmail, money, orderLink, reviewAlertEmail, shippingEmail, shopNotificationEmail };
+
+// =====================================================================
+// 8. The welcome, once someone is accepted and set up
+// =====================================================================
+function crewWelcomeEmail({ site, instagram, name, role, code, percent, message }) {
+  const accent = GOLD;
+  const first = String(name || '').trim().split(/\s+/)[0] || '';
+  const asWhat = role === 'model' ? 'a model' : role === 'both' ? 'an ambassador and a model' : 'an ambassador';
+  const body = `
+    ${message ? `<div style="margin:0 0 18px;padding:18px 20px;background:${C.panel};border-left:2px solid ${GOLD};font:400 15px/1.6 ${BODY};color:${C.bone};white-space:pre-wrap">${esc(message)}</div>` : ''}
+    ${code ? plate('Your code', code, percent ? `${percent}% off, yours to share` : 'Yours to share') : ''}
+    ${code ? `<div style="margin:14px 0 0;font:400 14px/1.6 ${BODY};color:${C.muted}">
+      Anyone can use it at checkout. It is tied to your name, so what it sells is counted as yours.</div>` : ''}
+    <div style="margin:26px 0 10px;height:1px;background:${GOLD_DIM}"></div>
+    ${label('What happens now')}
+    <ul style="margin:8px 0 0;padding:0 0 0 18px;font:400 15px/1.75 ${BODY};color:${C.text}">
+      <li>We'll be in touch about kit and sizing.</li>
+      <li>Tag us in what you post and we'll share it.</li>
+      <li>Say so plainly when something is gifted or paid. It's the law, and we'd rather be straight about it anyway.</li>
+    </ul>
+    <div style="margin:24px 0 4px">${button(`${site}/`, 'See what you\'re repping', accent)}</div>`;
+  return {
+    subject: code ? `You're in — your SPXTR code is ${code}` : "You're in — welcome to SPXTR",
+    html: layout({
+      site, accent, instagram,
+      preheader: `Welcome to the crew${code ? `. Your code is ${code}.` : '.'}`,
+      eyebrowText: 'Crew // welcome',
+      title: 'Welcome to<br>the crew.',
+      intro: `${first ? `${esc(first)}, you` : 'You'}'re in as ${asWhat}. Here's everything you need to get going.`,
+      body,
+    }),
+    text: `Welcome to the SPXTR crew. You're in as ${asWhat}.${code ? `\n\nYour code: ${code}${percent ? ` (${percent}% off)` : ''}` : ''}${message ? `\n\n${message}` : ''}`,
+  };
+}
+  return { applicationAlertEmail, applicationAppliedEmail, applicationStatusEmail, confirmationEmail, crewWelcomeEmail, esc, launchLiveEmail, launchWelcomeEmail, money, orderLink, reviewAlertEmail, shippingEmail, shopNotificationEmail };
 })();
 
 // ---------- email.ts ----------
@@ -616,11 +665,14 @@ const reviewAlertEmail = (site: string, review: Record<string, unknown>, product
   T.reviewAlertEmail({ site, review, productName, accent: brand.accent, instagram: brand.instagram });
 
 const applicationAppliedEmail = (site: string, kind: string, ref: string, name: string) =>
-  T.applicationAppliedEmail({ site, accent, instagram, kind, ref, name });
+  T.applicationAppliedEmail({ site, accent: brand.accent, instagram: brand.instagram, kind, ref, name });
 const applicationAlertEmail = (site: string, app: Record<string, unknown>) =>
-  T.applicationAlertEmail({ site, accent, app });
+  T.applicationAlertEmail({ site, accent: brand.accent, app });
 const applicationStatusEmail = (site: string, o: { kind: string; ref: string; name: string; status: string; message?: string }) =>
-  T.applicationStatusEmail({ site, accent, instagram, ...o });
+  T.applicationStatusEmail({ site, accent: brand.accent, instagram: brand.instagram, ...o });
+
+const crewWelcomeEmail = (site: string, o: { name: string; role: string; code?: string; percent?: number; message?: string }) =>
+  T.crewWelcomeEmail({ site, instagram: brand.instagram, ...o });
 
 const launchWelcomeEmail = (site: string, unsubUrl: string) =>
   T.launchWelcomeEmail({ site, unsubUrl, accent: brand.accent, instagram: brand.instagram });
@@ -647,13 +699,33 @@ const db = createClient(env('SUPABASE_URL'), serviceKey(), { auth: { persistSess
 const EMAIL = /^[^@\s]+@[^@\s]+\.[^@\s]{2,}$/;
 const PER_HOUR = 5;
 const STATUSES = ['new', 'reviewing', 'shortlisted', 'accepted', 'declined'];
-const KINDS = ['ambassador', 'model'];
-// Anything a form may send that is particular to one kind. Everything else is ignored, so a
-// doctored form can never write fields nobody asked for.
-const EXTRA: Record<string, number> = {
-  disciplines: 400, highlights: 1200, kit_size: 12,                       // riders
-  height: 20, shoe: 12, hair: 30, eyes: 30, sizes: 80, experience: 1200, agency: 80, travel: 120,  // models
+const KINDS = ['ambassador', 'model', 'both'];
+// Every answer the form may send, with how much of it we keep. Anything not named here is
+// dropped, so a doctored form can never write fields nobody asked for. Lists stay lists.
+const ANSWERS: Record<string, number> = {
+  legal_name: 80, preferred_name: 60, dob: 20, pronouns: 40, email: 200, phone: 40, location: 120,
+  work_rights: 20, legal_matters: 10, transport: 20,
+  role: 60, interest: 1200, fearless: 1200, fit: 1200, bring: 1200,
+  interests: 40, background: 1500, competing: 900, groups: 900,
+  instagram: 60, tiktok: 60, facebook: 120, youtube: 120, other_link: 200,
+  content_types: 60, post_often: 40, audience: 1200, disclosure: 60,
+  amb_why: 1200, amb_authentic: 1200, amb_opportunities: 60, amb_previous: 900, amb_current: 900, amb_conflicts: 900,
+  mod_experience_level: 60, mod_experience: 1200, mod_comfortable: 60, mod_limits: 1200,
+  mod_direction: 40, mod_others: 40, mod_size: 40, mod_height: 20, mod_shoe: 12, mod_fit: 600,
+  days: 20, evenings: 20, travel: 40, availability_notes: 900,
+  licences: 60, licence_notes: 900, safety_ok: 10, conduct_ok: 10, access_needs: 900,
+  photo_face: 300, photo_full: 300, portfolio: 200,
+  heard: 40, anything_else: 1200, consent: 160, signature: 80,
 };
+// Answers that must be there, and the ones that must be a straight yes.
+const REQUIRED = ['legal_name', 'dob', 'email', 'phone', 'location', 'work_rights', 'transport',
+  'role', 'interest', 'fearless', 'fit', 'bring', 'background', 'disclosure', 'signature'];
+const MUST_AGREE = ['safety_ok', 'conduct_ok'];
+const CONSENT_COUNT = 8;
+const PHOTO_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
+const MAX_PHOTO = 5 * 1024 * 1024;
+const MIN_AGE = 18;
+
 class Bad extends Error {}
 
 const clean = (v: unknown, max: number) =>
@@ -727,26 +799,91 @@ Deno.serve(async req => {
           });
           await sendEmail(row.email, m.subject, m.html, m.text, senderFor('application'), { kind: 'order' });
           emailed = true;
-        } catch (err) { await noteEmailProblem(`Ambassador status email to ${row.email} failed`, err); }
+        } catch (err) { await noteEmailProblem(`Application status email to ${row.email} failed`, err); }
       }
       return json({ ok: true, emailed, application: row }, 200, headers);
+    }
+
+    // ---- setting someone up once they are accepted ----
+    // Their code is created in Stripe here rather than by hand, so it exists the moment it is
+    // promised, and checkout already accepts promotion codes.
+    if (b.crew) {
+      const user = await asAdmin(req);
+      if (!user) return json({ error: 'Not allowed. Confirm your password and try again.' }, 403, headers);
+      const { id, role, code, percent, kit, create = false } = b.crew;
+      const want: Record<string, unknown> = {};
+      if (role && KINDS.includes(role)) want.role = role;
+      if (kit !== undefined) want.kit_sent_at = kit ? new Date().toISOString() : null;
+
+      let madeInStripe = false;
+      const wanted = clean(code, 40).toUpperCase().replace(/[^A-Z0-9]/g, '');
+      const off = Math.min(100, Math.max(1, Math.round(Number(percent) || 0)));
+      if (wanted) want.code = wanted;
+      if (off) want.percent = off;
+
+      if (create && wanted && off) {
+        const key = Deno.env.get('STRIPE_SECRET_KEY');
+        if (!key) return json({ error: 'Stripe isn\'t connected, so a code can\'t be created here. Add it in Stripe and type it in instead.' }, 400, headers);
+        const stripe = async (path: string, body: Record<string, string>) => {
+          const res = await fetch(`https://api.stripe.com/v1/${path}`, {
+            method: 'POST',
+            headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: new URLSearchParams(body),
+          });
+          const out = await res.json();
+          if (!res.ok) throw new Bad(out?.error?.message || 'Stripe refused that code.');
+          return out;
+        };
+        // A coupon holds the discount; the promotion code is the word people type.
+        const coupon = await stripe('coupons', { percent_off: String(off), duration: 'forever', name: `SPXTR crew — ${wanted}` });
+        await stripe('promotion_codes', { coupon: coupon.id, code: wanted });
+        want.code_created_at = new Date().toISOString();
+        madeInStripe = true;
+      }
+
+      const { data: row, error } = await user.rpc('application_set_crew', { app_id: id, data: want });
+      if (error) throw new Bad(error.message);
+      return json({ ok: true, madeInStripe, application: row }, 200, headers);
+    }
+
+    // ---- the welcome, once they are set up ----
+    if (b.welcome) {
+      const user = await asAdmin(req);
+      if (!user) return json({ error: 'Not allowed. Confirm your password and try again.' }, 403, headers);
+      const { data: rows, error } = await user.rpc('application_list');
+      if (error) throw new Bad(error.message);
+      const row = (rows || []).find((x: Record<string, unknown>) => x.id === b.welcome.id);
+      if (!row) throw new Bad('That application no longer exists');
+      if (!emailConfigured()) return json({ error: 'Email isn\'t set up yet (RESEND_API_KEY / EMAIL_FROM).' }, 400, headers);
+
+      const crew = row.crew || {};
+      await loadAccent(db);
+      const m = crewWelcomeEmail(siteUrl(), {
+        name: row.name, role: crew.role || row.kind,
+        code: crew.code, percent: crew.percent, message: clean(b.welcome.message, 1200),
+      });
+      try {
+        await sendEmail(row.email, m.subject, m.html, m.text, senderFor('application'), { kind: 'order' });
+      } catch (err) {
+        await noteEmailProblem(`Welcome email to ${row.email} failed`, err);
+        throw new Bad('That email could not be sent. The reason is in the activity log.');
+      }
+      await user.rpc('application_set_crew', { app_id: row.id, data: { welcomed_at: new Date().toISOString() } });
+      return json({ ok: true, emailed: true }, 200, headers);
     }
 
     // ---- someone applying ----
     if (b.website) return json({ ok: true }, 200, headers);        // honeypot: bots fill hidden fields
 
     const kind = KINDS.includes(b.kind) ? b.kind : 'ambassador';
-    const name = clean(b.name, 80);
-    const email = clean(b.email, 200).toLowerCase();
-    if (name.length < 2) throw new Bad('Please tell us your name.');
-    if (!EMAIL.test(email)) throw new Bad('That email address doesn\'t look right.');
+    const given = (b.answers && typeof b.answers === 'object') ? b.answers : {};
 
-    // The questions only one kind asks. Lists stay lists; everything else is trimmed text.
+    // Keep only the answers we asked for.
     const answers: Record<string, unknown> = {};
-    for (const [key, max] of Object.entries(EXTRA)) {
-      const raw = b[key];
+    for (const [key, max] of Object.entries(ANSWERS)) {
+      const raw = given[key];
       if (Array.isArray(raw)) {
-        const list = [...new Set(raw.map((d: unknown) => clean(d, 40)).filter(Boolean))].slice(0, 10);
+        const list = [...new Set(raw.map((d: unknown) => clean(d, max)).filter(Boolean))].slice(0, 30);
         if (list.length) answers[key] = list;
       } else {
         const v = clean(raw, max);
@@ -754,23 +891,48 @@ Deno.serve(async req => {
       }
     }
 
+    const name = clean(answers.legal_name ?? b.name, 80);
+    const email = clean(answers.email ?? b.email, 200).toLowerCase();
+    if (name.length < 2) throw new Bad('Please tell us your name.');
+    if (!EMAIL.test(email)) throw new Bad('That email address doesn\'t look right.');
+    for (const key of REQUIRED) {
+      if (!answers[key] || !String(answers[key]).trim()) throw new Bad('Some required answers are missing. Go back and check the form.');
+    }
+    for (const key of MUST_AGREE) {
+      if (String(answers[key]).toLowerCase() !== 'yes') {
+        throw new Bad('We can only take applications from people who agree to the safety and conduct terms.');
+      }
+    }
+    // Consent is a legal record, so it is counted here and not taken on the browser's word.
+    if (([] as unknown[]).concat(answers.consent ?? []).length < CONSENT_COUNT) {
+      throw new Bad('Please tick every confirmation box.');
+    }
+    // 18+, worked out from the date of birth rather than a self-reported age.
+    const born = new Date(String(answers.dob));
+    if (isNaN(born.getTime())) throw new Bad('Please give your date of birth.');
+    const today = new Date();
+    let age = today.getFullYear() - born.getFullYear();
+    const months = today.getMonth() - born.getMonth();
+    if (months < 0 || (months === 0 && today.getDate() < born.getDate())) age--;
+    if (age < MIN_AGE) throw new Bad(`You need to be ${MIN_AGE} or older to apply.`);
+    if (age > 100) throw new Bad('Please check your date of birth.');
+
     const app = {
       kind,
       name,
       email,
-      phone: clean(b.phone, 40) || null,
-      location: clean(b.location, 120) || null,
-      age: whole(b.age, 100),
-      instagram: handle(b.instagram) || null,
-      tiktok: handle(b.tiktok) || null,
-      youtube: handle(b.youtube, 120) || null,
+      phone: clean(answers.phone, 40) || null,
+      location: clean(answers.location, 120) || null,
+      age,
+      instagram: handle(answers.instagram) || null,
+      tiktok: handle(answers.tiktok) || null,
+      youtube: handle(answers.youtube, 120) || null,
       reach: whole(b.reach, 100_000_000),
-      why: clean(b.why, 1500) || null,
-      links: clean(b.links, 600) || null,
-      heard: clean(b.heard, 120) || null,
+      why: clean(answers.interest, 1500) || null,
+      links: clean([answers.other_link, answers.portfolio].filter(Boolean).join('\n'), 600) || null,
+      heard: clean(answers.heard, 120) || null,
       answers,
     };
-    if (app.age !== null && app.age < 13) throw new Bad('You need to be at least 13 to apply.');
 
     const ip = req.headers.get('cf-connecting-ip') || (req.headers.get('x-forwarded-for') ?? '').split(',')[0].trim() || 'unknown';
     const ipHash = await sha256(ip + '|' + env('SUPABASE_URL'));
@@ -781,7 +943,7 @@ Deno.serve(async req => {
     }
 
     // The reference carries the kind: SPX-A-… to ride, SPX-M-… to model.
-    const ref = `SPX-${kind === 'model' ? 'M' : 'A'}-` +
+    const ref = `SPX-${kind === 'model' ? 'M' : kind === 'both' ? 'B' : 'A'}-` +
       [...crypto.getRandomValues(new Uint8Array(4))].map(n => 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'[n % 32]).join('');
     const { data: row, error } = await db.from('applications')
       .insert({ ...app, ref, ip_hash: ipHash }).select('id, kind, ref, name, email').single();
@@ -793,6 +955,28 @@ Deno.serve(async req => {
       throw error;
     }
 
+    // Photos, if any were attached rather than linked. They go into a private bucket under the
+    // application's own reference, with the service key -- there is no upload address a browser
+    // could reach. Type and size are checked here, not trusted from the file name.
+    const sent = (b.photos && typeof b.photos === 'object') ? b.photos : {};
+    const stored: Record<string, string> = {};
+    for (const slot of ['photo_face', 'photo_full']) {
+      const f = sent[slot];
+      if (!f?.data || !PHOTO_TYPES.includes(String(f.type))) continue;
+      try {
+        const bytes = Uint8Array.from(atob(String(f.data)), c => c.charCodeAt(0));
+        if (bytes.length > MAX_PHOTO) continue;
+        const ext = String(f.type).split('/')[1].replace('jpeg', 'jpg');
+        const path = `${row.ref}/${slot}.${ext}`;
+        const { error: upErr } = await db.storage.from('applications')
+          .upload(path, bytes, { contentType: String(f.type), upsert: true });
+        if (!upErr) stored[slot] = path;
+      } catch (err) { await noteEmailProblem(`Application photo ${slot} could not be stored`, err); }
+    }
+    if (Object.keys(stored).length) {
+      await db.from('applications').update({ answers: { ...answers, ...stored } }).eq('id', row.id);
+    }
+
     // Tell the applicant, then tell the crew. Neither failing loses the application.
     let emailed = false;
     if (emailConfigured()) {
@@ -801,14 +985,14 @@ Deno.serve(async req => {
         const m = applicationAppliedEmail(siteUrl(), row.kind, row.ref, row.name);
         await sendEmail(row.email, m.subject, m.html, m.text, senderFor('application'), { kind: 'order' });
         emailed = true;
-      } catch (err) { await noteEmailProblem('Ambassador confirmation email failed', err); }
+      } catch (err) { await noteEmailProblem('Application confirmation email failed', err); }
 
       const crew = crewAddress();
       if (crew) {
         try {
           const m = applicationAlertEmail(siteUrl(), { ...app, ref: row.ref });
           await sendEmail(crew, m.subject, m.html, m.text, senderFor('application'), { kind: 'order' });
-        } catch (err) { await noteEmailProblem('Ambassador alert to the crew failed', err); }
+        } catch (err) { await noteEmailProblem('Application alert to the crew failed', err); }
       }
     }
     return json({ ok: true, ref: row.ref, emailed }, 200, headers);

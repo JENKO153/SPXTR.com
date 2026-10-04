@@ -360,6 +360,7 @@ if (window.top !== window.self) { document.documentElement.innerHTML = ''; throw
       ${CMS.mode === 'demo' ? '<div class="notice notice--demo"><b>Demo mode.</b> Applications sent from the ambassador and model pages land here.</div>' : ''}
       <div class="seg seg--top" id="ambTop" role="tablist">
         <button type="button" role="tab" data-t="list" class="${ambTab === 'list' ? 'on' : ''}">Applications <small>${all.length}</small></button>
+        <button type="button" role="tab" data-t="crew" class="${ambTab === 'crew' ? 'on' : ''}">The crew <small>${all.filter(a => a.status === 'accepted').length}</small></button>
         <button type="button" role="tab" data-t="page" class="${ambTab === 'page' ? 'on' : ''}">Page content</button>
       </div>
       <div class="panel" ${ambTab === 'list' ? '' : 'hidden'}>
@@ -377,6 +378,14 @@ if (window.top !== window.self) { document.documentElement.innerHTML = ''; throw
           <span class="muted" style="font-size:12px">Every change emails the applicant</span>
         </div>
         <div class="amb-admin" id="ambList"></div>
+      </div>
+
+      <div class="panel" ${ambTab === 'crew' ? '' : 'hidden'}>
+        <div class="toolbar">
+          <b>Accepted</b>
+          <span class="muted" style="font-size:12px">Everyone you've taken on, what they were taken on as, and their code</span>
+        </div>
+        <div class="crew" id="crewList"></div>
       </div>
 
       <div class="editor" ${ambTab === 'page' ? '' : 'hidden'}>
@@ -441,18 +450,25 @@ if (window.top !== window.self) { document.documentElement.innerHTML = ''; throw
       const ans = a.answers || {};
       // The answers are printed under the same headings the applicant saw, straight from the
       // form's own description — add a question to the form and it shows up here by itself.
-      const sheet = (DATA.settings.apply || DEFAULT_SETTINGS.apply).sections || [];
+      // The questions live in the site's code, not in the saved settings, so the labels come
+      // from there. Every answer is printed under the heading the applicant saw it under — and
+      // anything that isn't in the current question list is printed anyway at the end, so an
+      // older application can never arrive here with answers that quietly go missing.
+      const sheet = DEFAULT_SETTINGS.apply.sections || [];
       const short = v => (Array.isArray(v) ? v.join(', ') : String(v));
+      const empty = v => v === undefined || v === null || v === '' || (Array.isArray(v) && !v.length);
+      const asPhoto = v => {
+        const stored = !/^https?:/i.test(String(v));
+        return `<p>${stored
+          ? `<a class="link" href="#" data-photo="${esc(String(v))}">Open photo (${esc(String(v).split('/').pop())})</a>`
+          : `<a class="link" href="${esc(String(v))}" target="_blank" rel="noopener noreferrer">${esc(String(v))}</a>`}</p>`;
+      };
+      const shown = new Set(['legal_name', 'email', 'phone', 'location', 'role']);
       const answered = (name, o) => {
         const v = ans[name];
-        if (v === undefined || v === null || v === '' || (Array.isArray(v) && !v.length)) return '';
-        if (o?.type === 'photo') {
-          const stored = !/^https?:/i.test(String(v));
-          return `<p>${stored
-            ? `<a class="link" href="#" data-photo="${esc(String(v))}">Open photo (${esc(String(v).split('/').pop())})</a>`
-            : `<a class="link" href="${esc(String(v))}" target="_blank" rel="noopener noreferrer">${esc(String(v))}</a>`}</p>`;
-        }
-        return `<p>${esc(short(v))}</p>`;
+        if (empty(v)) return '';
+        shown.add(name);
+        return o?.type === 'photo' ? asPhoto(v) : `<p>${esc(short(v))}</p>`;
       };
       const groups = sheet.map(([title, , when, fields]) => {
         const rows = fields.map(([name, label, o]) => {
@@ -460,7 +476,14 @@ if (window.top !== window.self) { document.documentElement.innerHTML = ''; throw
           return body ? `<h5>${esc(label)}</h5>${body}` : '';
         }).join('');
         return rows ? `<section class="amb-admin__group"><h4>${esc(title)}</h4>${rows}</section>` : '';
-      }).join('');
+      }).join('')
+      // Anything the current form doesn't ask any more.
+      + (() => {
+        const extra = Object.keys(ans).filter(k => !shown.has(k) && !empty(ans[k]));
+        if (!extra.length) return '';
+        return `<section class="amb-admin__group"><h4>Also sent</h4>${extra.map(k =>
+          `<h5>${esc(k.replace(/_/g, ' '))}</h5>${/^photo/.test(k) ? asPhoto(ans[k]) : `<p>${esc(short(ans[k]))}</p>`}`).join('')}</section>`;
+      })();
       return `
       <article class="amb-admin__item${open ? ' is-open' : ''}" data-id="${esc(a.id)}">
         <button type="button" class="amb-admin__head" data-act="toggle">
@@ -559,6 +582,83 @@ if (window.top !== window.self) { document.documentElement.innerHTML = ''; throw
       a.status = status; a.note = note;
       toast(`${a.name} → ${label}. They've been emailed`);
       applications(); refreshLater();
+    });
+
+    /* ---- the crew: everyone accepted, and setting them up ---- */
+    const crewRows = all.filter(a => a.status === 'accepted');
+    const drawCrew = () => {
+      const host = $('#crewList');
+      if (!host) return;
+      host.innerHTML = crewRows.map(a => {
+        const c = a.crew || {};
+        const took = c.role || a.kind || 'ambassador';
+        const made = c.code_created_at ? 'In Stripe' : (c.code ? 'Not in Stripe yet' : '');
+        return `
+        <article class="crew__row" data-id="${esc(a.id)}">
+          <div class="crew__who">
+            <b>${esc(a.name)}</b>
+            <span class="muted">${esc(a.email)}</span>
+            <code>${esc(a.ref)}</code>
+          </div>
+          <label class="crew__as">Taken on as
+            <select data-role>
+              ${[['ambassador', 'Ambassador'], ['model', 'Model'], ['both', 'Ambassador + model']]
+                .map(([k, l]) => `<option value="${k}" ${took === k ? 'selected' : ''}>${l}</option>`).join('')}
+            </select>
+          </label>
+          <div class="crew__code">
+            <label>Their code<input data-code maxlength="40" value="${esc(c.code || '')}" placeholder="${esc((a.name || '').split(' ')[0] || 'NAME').toUpperCase()}15"></label>
+            <label>% off<input data-percent type="number" min="1" max="100" value="${esc(c.percent || 15)}"></label>
+            <button type="button" class="btn btn--ghost btn--sm" data-act="code">${c.code_created_at ? 'Recreate in Stripe' : 'Create in Stripe'}</button>
+            ${made ? `<span class="crew__flag">${esc(made)}</span>` : ''}
+          </div>
+          <div class="crew__done">
+            <label class="toggle"><input type="checkbox" data-kit ${c.kit_sent_at ? 'checked' : ''}>Kit sent</label>
+            ${c.welcomed_at ? `<span class="crew__flag">Welcomed ${esc(fmtDate(c.welcomed_at))}</span>` : '<span class="muted">Not welcomed yet</span>'}
+          </div>
+          <div class="crew__send">
+            <textarea data-msg rows="2" maxlength="1200" placeholder="A line of your own to go in the welcome email (optional)"></textarea>
+            <div>
+              <button type="button" class="btn btn--sm" data-act="welcome">${c.welcomed_at ? 'Send again' : 'Send welcome'}</button>
+              <button type="button" class="btn btn--ghost btn--sm" data-act="save">Save</button>
+            </div>
+          </div>
+        </article>`;
+      }).join('') || '<div class="empty">Nobody accepted yet. Accept someone on the Applications tab and they appear here.</div>';
+    };
+    drawCrew();
+
+    $('#crewList')?.addEventListener('click', async e => {
+      const b = e.target.closest('[data-act]'); if (!b) return;
+      const card = b.closest('[data-id]');
+      const a = crewRows.find(x => String(x.id) === card.dataset.id); if (!a) return;
+      const role = card.querySelector('[data-role]').value;
+      const code = card.querySelector('[data-code]').value.trim();
+      const percent = Number(card.querySelector('[data-percent]').value) || 0;
+      const kit = card.querySelector('[data-kit]').checked;
+      const message = card.querySelector('[data-msg]').value;
+
+      if (b.dataset.act === 'welcome') {
+        if (!code && !confirm('No code set for them yet. Send the welcome without one?')) return;
+        const ok = await withWrite(`Enter your admin password to send ${a.name} their welcome email.`,
+          () => CMS.sendWelcome(a.id, message));
+        if (!ok) return;
+        a.crew = { ...(a.crew || {}), welcomed_at: new Date().toISOString() };
+        toast(`Welcome sent to ${a.name}`); drawCrew(); return;
+      }
+
+      const create = b.dataset.act === 'code';
+      if (create && !(code && percent)) { toast('Give them a code and a percentage first', true); return; }
+      const ok = await withWrite(create
+        ? `Enter your admin password to create ${code} in Stripe.`
+        : 'Enter your admin password to save these details.',
+        () => CMS.setCrew({ id: a.id, role, code, percent, kit, create }));
+      if (!ok) return;
+      a.crew = { ...(a.crew || {}), role, code: code.toUpperCase().replace(/[^A-Z0-9]/g, ''), percent,
+                 kit_sent_at: kit ? new Date().toISOString() : null,
+                 ...(create ? { code_created_at: new Date().toISOString() } : {}) };
+      toast(create ? `${code} created in Stripe` : 'Saved');
+      drawCrew();
     });
 
     /* ---- the page editor, on its own tab ---- */

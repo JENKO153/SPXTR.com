@@ -21,6 +21,14 @@ const HEAD = "'Big Shoulders Stencil Display', Impact, 'Arial Black', 'Helvetica
 const BODY = "'Helvetica Neue', Helvetica, Arial, sans-serif";
 const MONO = "'JetBrains Mono', 'SFMono-Regular', Menlo, Consolas, monospace";
 
+// The application emails are gold rather than the brand accent, to match the pages people
+// applied through. Email clients can't be trusted with gradients or background-clip, so this is
+// a solid leaf colour with a paler highlight for rules and edges - it reads the same way and
+// renders everywhere.
+const GOLD = '#D9AE43';
+const GOLD_LIGHT = '#F2DFA4';
+const GOLD_DIM = '#6B5219';
+
 const orderNo = o => `SPX-${o.number}`;
 const firstName = o => String(o.name || '').trim().split(/\s+/)[0] || '';
 export const orderLink = (site, o) => (o.access_key ? `${site}/order/?o=${o.number}&k=${encodeURIComponent(o.access_key)}` : '');
@@ -38,6 +46,15 @@ function button(href, label, accent, solid = true) {
       <a href="${esc(href)}" style="display:inline-block;padding:14px 22px;font:700 13px/1 ${BODY};letter-spacing:.14em;text-transform:uppercase;color:${fg};text-decoration:none">${esc(label)}</a>
     </td></tr></table>`;
 }
+
+// A bordered plate, the way the reference is stamped on the page.
+const plate = (label, value, sub) => `
+  <table role="presentation" cellpadding="0" cellspacing="0" style="margin:26px 0 6px"><tr><td
+    style="border:2px solid ${GOLD};padding:16px 24px;background:#141109">
+    <div style="font:500 10px/1.4 ${MONO};letter-spacing:.2em;text-transform:uppercase;color:${C.muted};margin:0 0 6px">${esc(label)}</div>
+    <div style="font:500 22px/1.2 ${MONO};letter-spacing:.1em;color:${C.bone}">${esc(value)}</div>
+    ${sub ? `<div style="font:500 10px/1.4 ${MONO};letter-spacing:.18em;text-transform:uppercase;color:${GOLD};margin:6px 0 0">${esc(sub)}</div>` : ''}
+  </td></tr></table>`;
 
 const eyebrow = (text, accent) => `<div style="font:500 12px/1.4 ${MONO};letter-spacing:.14em;text-transform:uppercase;color:${accent};margin:0 0 10px">${esc(text)}</div>`;
 const label = text => `<div style="font:500 11px/1.4 ${MONO};letter-spacing:.14em;text-transform:uppercase;color:${C.muted};margin:0 0 6px">${esc(text)}</div>`;
@@ -388,14 +405,13 @@ const STATUS_COPY = {
 // To the applicant, the moment they apply.
 export function applicationAppliedEmail({ site, accent, instagram, kind, ref, name }) {
   const what = kind === 'model' ? 'model' : 'ambassador';
-  accent = readable(accent);
+  accent = GOLD;                                   // these are the gold ones
   const body = `
-    ${label('Your reference')}
-    <div style="font:500 20px/1.2 ${MONO};letter-spacing:.08em;color:${C.bone};margin:0 0 20px">${esc(ref)}</div>
-    <div style="margin:0 0 16px;padding:18px 20px;background:${C.panel};border-left:4px solid ${accent};font:400 15px/1.6 ${BODY};color:${C.bone}">
+    <div style="margin:0 0 16px;padding:18px 20px;background:${C.panel};border-left:2px solid ${GOLD};font:400 15px/1.6 ${BODY};color:${C.bone}">
       Every application is read by the crew, not a robot. We'll email you at each stage, so you're
       never left wondering where it got to.
-    </div>`;
+    </div>
+    ${plate('Your reference', ref, 'Quote this if you get in touch')}`;
   return {
     subject: `We've got your application (${ref})`,
     html: layout({
@@ -413,7 +429,7 @@ export function applicationAppliedEmail({ site, accent, instagram, kind, ref, na
 // To the crew, so an application is never missed.
 export function applicationAlertEmail({ site, accent, app }) {
   const what = app.kind === 'model' ? 'Model' : 'Ambassador';
-  accent = readable(accent);
+  accent = GOLD;
   const row = (k, v) => (v ? `<tr><td style="padding:6px 14px 6px 0;font:500 11px/1.5 ${MONO};letter-spacing:.1em;text-transform:uppercase;color:${C.muted};white-space:nowrap;vertical-align:top">${esc(k)}</td>
     <td style="padding:6px 0;font:400 14px/1.55 ${BODY};color:${C.bone}">${esc(v)}</td></tr>` : '');
   const body = `
@@ -448,13 +464,12 @@ export function applicationAlertEmail({ site, accent, app }) {
 
 // To the applicant whenever the crew moves their application along.
 export function applicationStatusEmail({ site, accent, instagram, kind, ref, name, status, message }) {
-  accent = readable(accent);
+  accent = GOLD;
   const copy = STATUS_COPY[status] || STATUS_COPY.new;
   const body = `
-    ${message ? `<div style="margin:0 0 16px;padding:18px 20px;background:${C.panel};border-left:4px solid ${accent};font:400 15px/1.6 ${BODY};color:${C.bone};white-space:pre-wrap">${esc(message)}</div>` : ''}
+    ${message ? `<div style="margin:0 0 16px;padding:18px 20px;background:${C.panel};border-left:2px solid ${GOLD};font:400 15px/1.6 ${BODY};color:${C.bone};white-space:pre-wrap">${esc(message)}</div>` : ''}
     <div style="margin:0 0 18px;font:400 15px/1.6 ${BODY};color:${C.text}">${copy.line}</div>
-    ${label('Your reference')}
-    <div style="font:500 18px/1.2 ${MONO};letter-spacing:.08em;color:${C.bone}">${esc(ref)}</div>
+    ${plate('Your reference', ref)}
     ${status === 'accepted' ? `<div style="margin:22px 0 4px">${button(`${site}/`, 'See what you\'re repping', accent)}</div>` : ''}`;
   return {
     subject: status === 'accepted' ? `You're in — welcome to the SPXTR crew (${ref})`
@@ -469,5 +484,39 @@ export function applicationStatusEmail({ site, accent, instagram, kind, ref, nam
       body,
     }),
     text: `${copy.intro}\n\n${message ? message + '\n\n' : ''}${copy.line}\n\nReference: ${ref}`,
+  };
+}
+
+// =====================================================================
+// 8. The welcome, once someone is accepted and set up
+// =====================================================================
+export function crewWelcomeEmail({ site, instagram, name, role, code, percent, message }) {
+  const accent = GOLD;
+  const first = String(name || '').trim().split(/\s+/)[0] || '';
+  const asWhat = role === 'model' ? 'a model' : role === 'both' ? 'an ambassador and a model' : 'an ambassador';
+  const body = `
+    ${message ? `<div style="margin:0 0 18px;padding:18px 20px;background:${C.panel};border-left:2px solid ${GOLD};font:400 15px/1.6 ${BODY};color:${C.bone};white-space:pre-wrap">${esc(message)}</div>` : ''}
+    ${code ? plate('Your code', code, percent ? `${percent}% off, yours to share` : 'Yours to share') : ''}
+    ${code ? `<div style="margin:14px 0 0;font:400 14px/1.6 ${BODY};color:${C.muted}">
+      Anyone can use it at checkout. It is tied to your name, so what it sells is counted as yours.</div>` : ''}
+    <div style="margin:26px 0 10px;height:1px;background:${GOLD_DIM}"></div>
+    ${label('What happens now')}
+    <ul style="margin:8px 0 0;padding:0 0 0 18px;font:400 15px/1.75 ${BODY};color:${C.text}">
+      <li>We'll be in touch about kit and sizing.</li>
+      <li>Tag us in what you post and we'll share it.</li>
+      <li>Say so plainly when something is gifted or paid. It's the law, and we'd rather be straight about it anyway.</li>
+    </ul>
+    <div style="margin:24px 0 4px">${button(`${site}/`, 'See what you\'re repping', accent)}</div>`;
+  return {
+    subject: code ? `You're in — your SPXTR code is ${code}` : "You're in — welcome to SPXTR",
+    html: layout({
+      site, accent, instagram,
+      preheader: `Welcome to the crew${code ? `. Your code is ${code}.` : '.'}`,
+      eyebrowText: 'Crew // welcome',
+      title: 'Welcome to<br>the crew.',
+      intro: `${first ? `${esc(first)}, you` : 'You'}'re in as ${asWhat}. Here's everything you need to get going.`,
+      body,
+    }),
+    text: `Welcome to the SPXTR crew. You're in as ${asWhat}.${code ? `\n\nYour code: ${code}${percent ? ` (${percent}% off)` : ''}` : ''}${message ? `\n\n${message}` : ''}`,
   };
 }

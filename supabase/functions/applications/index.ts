@@ -15,7 +15,7 @@
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { cors, env, json, originAllowed, serviceKey, siteUrl } from '../_shared/http.ts';
 import {
-  applicationAlertEmail, applicationAppliedEmail, applicationStatusEmail,
+  applicationAlertEmail, applicationAppliedEmail, applicationStatusEmail, crewWelcomeEmail,
   emailConfigured, loadAccent, sendEmail, senderFor,
 } from '../_shared/email.ts';
 
@@ -123,9 +123,77 @@ Deno.serve(async req => {
           });
           await sendEmail(row.email, m.subject, m.html, m.text, senderFor('application'), { kind: 'order' });
           emailed = true;
-        } catch (err) { await noteEmailProblem(`Ambassador status email to ${row.email} failed`, err); }
+        } catch (err) { await noteEmailProblem(`Application status email to ${row.email} failed`, err); }
       }
       return json({ ok: true, emailed, application: row }, 200, headers);
+    }
+
+    // ---- setting someone up once they are accepted ----
+    // Their code is created in Stripe here rather than by hand, so it exists the moment it is
+    // promised, and checkout already accepts promotion codes.
+    if (b.crew) {
+      const user = await asAdmin(req);
+      if (!user) return json({ error: 'Not allowed. Confirm your password and try again.' }, 403, headers);
+      const { id, role, code, percent, kit, create = false } = b.crew;
+      const want: Record<string, unknown> = {};
+      if (role && KINDS.includes(role)) want.role = role;
+      if (kit !== undefined) want.kit_sent_at = kit ? new Date().toISOString() : null;
+
+      let madeInStripe = false;
+      const wanted = clean(code, 40).toUpperCase().replace(/[^A-Z0-9]/g, '');
+      const off = Math.min(100, Math.max(1, Math.round(Number(percent) || 0)));
+      if (wanted) want.code = wanted;
+      if (off) want.percent = off;
+
+      if (create && wanted && off) {
+        const key = Deno.env.get('STRIPE_SECRET_KEY');
+        if (!key) return json({ error: 'Stripe isn\'t connected, so a code can\'t be created here. Add it in Stripe and type it in instead.' }, 400, headers);
+        const stripe = async (path: string, body: Record<string, string>) => {
+          const res = await fetch(`https://api.stripe.com/v1/${path}`, {
+            method: 'POST',
+            headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: new URLSearchParams(body),
+          });
+          const out = await res.json();
+          if (!res.ok) throw new Bad(out?.error?.message || 'Stripe refused that code.');
+          return out;
+        };
+        // A coupon holds the discount; the promotion code is the word people type.
+        const coupon = await stripe('coupons', { percent_off: String(off), duration: 'forever', name: `SPXTR crew — ${wanted}` });
+        await stripe('promotion_codes', { coupon: coupon.id, code: wanted });
+        want.code_created_at = new Date().toISOString();
+        madeInStripe = true;
+      }
+
+      const { data: row, error } = await user.rpc('application_set_crew', { app_id: id, data: want });
+      if (error) throw new Bad(error.message);
+      return json({ ok: true, madeInStripe, application: row }, 200, headers);
+    }
+
+    // ---- the welcome, once they are set up ----
+    if (b.welcome) {
+      const user = await asAdmin(req);
+      if (!user) return json({ error: 'Not allowed. Confirm your password and try again.' }, 403, headers);
+      const { data: rows, error } = await user.rpc('application_list');
+      if (error) throw new Bad(error.message);
+      const row = (rows || []).find((x: Record<string, unknown>) => x.id === b.welcome.id);
+      if (!row) throw new Bad('That application no longer exists');
+      if (!emailConfigured()) return json({ error: 'Email isn\'t set up yet (RESEND_API_KEY / EMAIL_FROM).' }, 400, headers);
+
+      const crew = row.crew || {};
+      await loadAccent(db);
+      const m = crewWelcomeEmail(siteUrl(), {
+        name: row.name, role: crew.role || row.kind,
+        code: crew.code, percent: crew.percent, message: clean(b.welcome.message, 1200),
+      });
+      try {
+        await sendEmail(row.email, m.subject, m.html, m.text, senderFor('application'), { kind: 'order' });
+      } catch (err) {
+        await noteEmailProblem(`Welcome email to ${row.email} failed`, err);
+        throw new Bad('That email could not be sent. The reason is in the activity log.');
+      }
+      await user.rpc('application_set_crew', { app_id: row.id, data: { welcomed_at: new Date().toISOString() } });
+      return json({ ok: true, emailed: true }, 200, headers);
     }
 
     // ---- someone applying ----
@@ -241,14 +309,14 @@ Deno.serve(async req => {
         const m = applicationAppliedEmail(siteUrl(), row.kind, row.ref, row.name);
         await sendEmail(row.email, m.subject, m.html, m.text, senderFor('application'), { kind: 'order' });
         emailed = true;
-      } catch (err) { await noteEmailProblem('Ambassador confirmation email failed', err); }
+      } catch (err) { await noteEmailProblem('Application confirmation email failed', err); }
 
       const crew = crewAddress();
       if (crew) {
         try {
           const m = applicationAlertEmail(siteUrl(), { ...app, ref: row.ref });
           await sendEmail(crew, m.subject, m.html, m.text, senderFor('application'), { kind: 'order' });
-        } catch (err) { await noteEmailProblem('Ambassador alert to the crew failed', err); }
+        } catch (err) { await noteEmailProblem('Application alert to the crew failed', err); }
       }
     }
     return json({ ok: true, ref: row.ref, emailed }, 200, headers);

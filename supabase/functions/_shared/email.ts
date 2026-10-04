@@ -82,11 +82,14 @@ export const reviewAlertEmail = (site: string, review: Record<string, unknown>, 
   T.reviewAlertEmail({ site, review, productName, accent: brand.accent, instagram: brand.instagram });
 
 export const applicationAppliedEmail = (site: string, kind: string, ref: string, name: string) =>
-  T.applicationAppliedEmail({ site, accent, instagram, kind, ref, name });
+  T.applicationAppliedEmail({ site, accent: brand.accent, instagram: brand.instagram, kind, ref, name });
 export const applicationAlertEmail = (site: string, app: Record<string, unknown>) =>
-  T.applicationAlertEmail({ site, accent, app });
+  T.applicationAlertEmail({ site, accent: brand.accent, app });
 export const applicationStatusEmail = (site: string, o: { kind: string; ref: string; name: string; status: string; message?: string }) =>
-  T.applicationStatusEmail({ site, accent, instagram, ...o });
+  T.applicationStatusEmail({ site, accent: brand.accent, instagram: brand.instagram, ...o });
+
+export const crewWelcomeEmail = (site: string, o: { name: string; role: string; code?: string; percent?: number; message?: string }) =>
+  T.crewWelcomeEmail({ site, instagram: brand.instagram, ...o });
 
 export const launchWelcomeEmail = (site: string, unsubUrl: string) =>
   T.launchWelcomeEmail({ site, unsubUrl, accent: brand.accent, instagram: brand.instagram });

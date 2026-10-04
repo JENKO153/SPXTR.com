@@ -893,10 +893,16 @@ create table if not exists public.applications (
   status text not null default 'new'
     check (status in ('new', 'reviewing', 'shortlisted', 'accepted', 'declined')),
   note text check (note is null or char_length(note) <= 2000),     -- private, never emailed
+  -- Set once someone is accepted: what they were taken on as, their discount code, and where
+  -- their onboarding has got to. Written only through application_set_crew().
+  crew jsonb not null default '{}'::jsonb check (pg_column_size(crew) < 4000),
   at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   ip_hash text
 );
+-- Added after the first release, so a table made by an earlier run gets it too.
+alter table public.applications add column if not exists crew jsonb not null default '{}'::jsonb;
+
 create index if not exists applications_at_idx on public.applications (kind, at desc);
 -- One application per person per kind: a rider may also apply to model.
 create unique index if not exists applications_email_idx on public.applications (kind, lower(email));
@@ -913,7 +919,7 @@ language sql stable security definer set search_path = public as $$
   select case when public.admin_ok() then coalesce((
     select jsonb_agg(to_jsonb(x) order by x.at desc) from (
       select id, kind, ref, name, email, phone, location, age, instagram, tiktok, youtube,
-             reach, links, why, heard, answers, status, note, at, updated_at
+             reach, links, why, heard, answers, status, note, crew, at, updated_at
       from public.applications order by at desc limit 2000) x), '[]'::jsonb)
   else '[]'::jsonb end;
 $$;
@@ -943,6 +949,28 @@ begin
 end $$;
 revoke all on function public.application_set_status(uuid, text, text) from public, anon;
 grant execute on function public.application_set_status(uuid, text, text) to authenticated;
+
+-- Everything that happens after someone is accepted: what they were taken on as, their code,
+-- and the onboarding ticks. Separate from the status so that accepting and setting someone up
+-- are two different acts in the activity log.
+create or replace function public.application_set_crew(app_id uuid, data jsonb) returns jsonb
+language plpgsql volatile security definer set search_path = public as $$
+declare row_out public.applications;
+begin
+  if not public.can_write() then raise exception 'Not allowed. Confirm your password and try again.'; end if;
+  if pg_column_size(data) > 4000 then raise exception 'Too much to store against one person'; end if;
+  update public.applications
+     set crew = coalesce(crew, '{}'::jsonb) || coalesce(data, '{}'::jsonb)
+   where id = app_id
+  returning * into row_out;
+  if row_out.id is null then raise exception 'That application no longer exists'; end if;
+  insert into public.audit_log (user_id, email, action, entity, entity_id, summary)
+  values (auth.uid(), coalesce(public.actor_name(), 'Admin'), 'update', 'applications', row_out.id::text,
+          'Crew details for ' || row_out.name || ' (' || row_out.ref || ')');
+  return to_jsonb(row_out);
+end $$;
+revoke all on function public.application_set_crew(uuid, jsonb) from public, anon;
+grant execute on function public.application_set_crew(uuid, jsonb) to authenticated;
 
 -- Remove an application outright (a duplicate, or someone asked to be taken off).
 create or replace function public.application_delete(app_id uuid) returns boolean
