@@ -72,6 +72,7 @@ function renderHome() {
   $('#disc').style.setProperty('--tiles', Math.max(tiles.length, 1));
   $('#disc').innerHTML = tiles.map((c, i) => `
     <a href="shop/?page=${encodeURIComponent(c.slug)}"><img src="${imgSrc(c.hero_image)}" alt="${esc(c.name)}" loading="lazy">
+      <i class="tile-drip" aria-hidden="true"></i>
       <div class="disc__label"><span class="code">Page 0${i + 1}</span><h3>${esc(c.name)}</h3></div></a>`).join('');
 
   $('#season-eyebrow').textContent = `Sec. 02 // ${SITE.season}`;
