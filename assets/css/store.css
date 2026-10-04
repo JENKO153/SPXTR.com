@@ -1439,10 +1439,10 @@ body { isolation: isolate; }
   transform-origin: 60% 100%;
 }
 [data-theme="christmas"] .logo__head, [data-theme="christmas"] .soon__head {
-  --hat-x: -.07; --hat-y: -.17; --hat-w: 1.1; --hat-h: .4; --hat-r: -4deg;
+  --hat-x: .13; --hat-y: -.2; --hat-w: .78; --hat-h: .34; --hat-r: -4deg;
 }
 [data-theme="halloween"] .logo__head, [data-theme="halloween"] .soon__head {
-  --hat-x: -.16; --hat-y: -.52; --hat-w: 1.32; --hat-h: .58; --hat-r: -5deg;
+  --hat-x: .02; --hat-y: -.42; --hat-w: .96; --hat-h: .44; --hat-r: -5deg;
 }
 [data-theme="easter"] .logo__head, [data-theme="easter"] .soon__head {
   --hat-x: .06; --hat-y: -.47; --hat-w: .88; --hat-h: .74; --hat-r: -3deg;
