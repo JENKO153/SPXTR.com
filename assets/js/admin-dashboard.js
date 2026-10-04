@@ -308,10 +308,25 @@ if (window.top !== window.self) { document.documentElement.innerHTML = ''; throw
   };
   const stars = n => `<span class="rv-admin__stars" aria-label="${n} out of 5">${'★'.repeat(n)}<span>${'★'.repeat(5 - n)}</span></span>`;
   let reviewFilter = null;
+  // A textarea of one-per-line values, trimmed, capped in count and length.
+  const lines = (value, max, len) => value.split('\n').map(x => x.trim()).filter(Boolean).slice(0, max).map(x => x.slice(0, len));
+
   /* ---------------- applications: ambassadors and models ----------------
      They arrive from /ambassadors/ and /models/. Moving one along emails the applicant, so the
      status buttons go through the same password confirmation as every other change here. */
   let ambKind = '', ambFilter = '', ambOpen = null, ambList = null;
+  // The wording and header photos for /ambassadors/ and /models/, edited under the list.
+  let ap = null, apImg = null, apDoor = 'ambassador';
+  function apState() {
+    if (ap) return;
+    ap = { ...DEFAULT_SETTINGS.apply, ...clone(DATA.settings.apply || {}) };
+    ap.doors = {
+      ambassador: { ...DEFAULT_SETTINGS.apply.doors.ambassador, ...(ap.doors?.ambassador || {}) },
+      model: { ...DEFAULT_SETTINGS.apply.doors.model, ...(ap.doors?.model || {}) },
+    };
+    apImg = { ambassador: ap.doors.ambassador.image ? [{ url: ap.doors.ambassador.image }] : [],
+              model: ap.doors.model.image ? [{ url: ap.doors.model.image }] : [] };
+  }
   const AMB_STATUS = {
     new:        ['Unread',      'pill--accent'],
     reviewing:  ['In review',   'pill--live'],
@@ -328,6 +343,7 @@ if (window.top !== window.self) { document.documentElement.innerHTML = ''; throw
 
   async function applications() {
     setTitle('Applications');
+    apState();
     if (!ambList) {
       view.innerHTML = '<div class="panel"><div class="empty">Loading applications…</div></div>';
       try { ambList = await CMS.applicationList(); }
@@ -338,7 +354,7 @@ if (window.top !== window.self) { document.documentElement.innerHTML = ''; throw
     const isKind = (a, k) => { const v = a.kind || 'ambassador'; return !k || v === k || v === 'both'; };
     const L = all.filter(a => isKind(a, ambKind));
     const count = st => L.filter(a => a.status === st).length;
-    const kinds = [['', 'Everyone'], ['ambassador', 'Riders'], ['model', 'Models']];
+    const kinds = [['', 'Everyone'], ['ambassador', 'Ambassadors'], ['model', 'Models']];
     const tabs = [['', 'All'], ['new', 'Unread'], ['reviewing', 'In review'], ['shortlisted', 'Shortlisted'], ['accepted', 'Accepted'], ['declined', 'Declined']];
     view.innerHTML = `
       ${CMS.mode === 'demo' ? '<div class="notice notice--demo"><b>Demo mode.</b> Applications sent from the ambassador and model pages land here.</div>' : ''}
@@ -357,6 +373,60 @@ if (window.top !== window.self) { document.documentElement.innerHTML = ''; throw
           <span class="muted" style="font-size:12px">Every change emails the applicant</span>
         </div>
         <div class="amb-admin" id="ambList"></div>
+      </div>
+
+      <div class="editor">
+        <form class="editor__form" id="apform" novalidate>
+          <div class="section">
+            <h3>The application pages <small>/ambassadors/ and /models/ — what people read before they apply</small></h3>
+            <p class="hint" style="margin:0 0 14px">Both stay open while the store is closed, and the coming soon page links to each. The preview beside this follows your changes.</p>
+            <div class="field-row">
+              <label>Intake label <span class="hint">Top right, and on the file</span><input name="apIntake" maxlength="40" value="${esc(ap.intake)}"></label>
+              <label>Heading above "who gets in"<input name="apLookingTitle" maxlength="60" value="${esc(ap.lookingTitle || '')}"></label>
+            </div>
+            <label>Opening paragraph <span class="hint">Under the headline on both pages</span>
+              <textarea name="apLead" rows="3" maxlength="400">${esc(ap.lead)}</textarea></label>
+            <div class="field-row">
+              <label>Invitation heading<input name="apInviteTitle" maxlength="90" value="${esc(ap.inviteTitle || '')}"></label>
+              <label>Plates beside the headline <span class="hint">Comma separated</span><input name="apScarcity" maxlength="120" value="${esc((ap.scarcity || []).join(', '))}"></label>
+            </div>
+            <label>Invitation paragraph<textarea name="apInviteText" rows="3" maxlength="500">${esc(ap.inviteText || '')}</textarea></label>
+            <label>Who gets in <span class="hint">One line each</span>
+              <textarea name="apLooking" rows="4" maxlength="600">${esc((ap.looking || []).join('\n'))}</textarea></label>
+            <label>Ticker words <span class="hint">One per line</span>
+              <textarea name="apMarquee" rows="4" maxlength="400">${esc((ap.marquee || []).join('\n'))}</textarea></label>
+            <label>Small print<textarea name="apSmallprint" rows="2" maxlength="500">${esc(ap.smallprint || '')}</textarea></label>
+            <label>Closing line <span class="hint">In the footer of both pages</span><input name="apClosing" maxlength="200" value="${esc(ap.closing || '')}"></label>
+          </div>
+
+          ${['ambassador', 'model'].map(k => `
+            <div class="section">
+              <h3>${k === 'model' ? 'Model page' : 'Ambassador page'} <small>/${esc(ap.doors[k].path)}</small>
+                <button type="button" class="btn btn--ghost btn--sm" data-see="${k}" style="float:right">Preview this page</button></h3>
+              <div class="field-row">
+                <label>Small text above<input name="ap_${k}_eyebrow" maxlength="60" value="${esc(ap.doors[k].eyebrow)}"></label>
+                <label>Button text<input name="ap_${k}_cta" maxlength="40" value="${esc(ap.doors[k].cta)}"></label>
+              </div>
+              <div class="field-row">
+                <label>Headline <span class="hint">One line per row</span>
+                  <textarea name="ap_${k}_title" rows="2" maxlength="80">${esc(ap.doors[k].title)}</textarea></label>
+                <label>Heading above what they get<input name="ap_${k}_perksTitle" maxlength="60" value="${esc(ap.doors[k].perksTitle || '')}"></label>
+              </div>
+              <label>Line under the coming soon button<input name="ap_${k}_ctaNote" maxlength="160" value="${esc(ap.doors[k].ctaNote || '')}"></label>
+              <label>What they get <span class="hint">One per line, as "Heading | the sentence under it"</span>
+                <textarea name="ap_${k}_perks" rows="4" maxlength="800">${esc((ap.doors[k].perks || []).map(([t, d]) => `${t} | ${d}`).join('\n'))}</textarea></label>
+              <label>Header photo</label>
+              <div class="hero-pick" id="apPick_${k}"></div>
+              <input type="file" id="apInput_${k}" accept="image/jpeg,image/png,image/webp,image/avif,image/heic,image/heif,.heic,.heif" hidden>
+            </div>`).join('')}
+
+          <div class="editor__bar">
+            <span class="dirty" id="apDirty" hidden>Unsaved changes</span>
+            <span style="flex:1"></span>
+            <button type="submit" class="btn">Save pages</button>
+          </div>
+        </form>
+        ${previewPanel(ROOT + 'ambassadors/?preview=1', 'spxtr.com/ambassadors/')}
       </div>`;
 
     const row = a => {
@@ -391,7 +461,7 @@ if (window.top !== window.self) { document.documentElement.innerHTML = ''; throw
       <article class="amb-admin__item${open ? ' is-open' : ''}" data-id="${esc(a.id)}">
         <button type="button" class="amb-admin__head" data-act="toggle">
           <span class="pill ${cls}">${esc(label)}</span>
-          <span class="pill pill--off">${{ model: 'Model', both: 'Rider + model' }[a.kind] || 'Rider'}</span>
+          <span class="pill pill--off">${{ model: 'Model', both: 'Ambassador + model' }[a.kind] || 'Ambassador'}</span>
           <b>${esc(a.name)}</b>
           <span class="muted">${esc(a.location || '')}</span>
           <span style="flex:1"></span>
@@ -429,6 +499,107 @@ if (window.top !== window.self) { document.documentElement.innerHTML = ''; throw
         || `<div class="empty">${L.length ? 'Nothing in here.' : 'No applications yet. They land here the moment someone applies at /ambassadors/.'}</div>`;
     };
     draw();
+
+    /* ---- the page editor under the list ---- */
+    const apForm = $('#apform');
+    const apDirty = () => { $('#apDirty').hidden = false; dirty = true; apSend(); };
+
+    // What the preview is shown, including a photo picked but not yet uploaded.
+    const apDraft = () => ({ settings: { ...DATA.settings, apply: { ...ap, doors: {
+      ambassador: { ...ap.doors.ambassador, image: apImg.ambassador[0] ? photoDraft(apImg.ambassador[0]) : '' },
+      model: { ...ap.doors.model, image: apImg.model[0] ? photoDraft(apImg.model[0]) : '' },
+    } } } });
+    const apSend = wirePreview(apDraft);
+
+    const apRead = () => {
+      const f = apForm;
+      Object.assign(ap, {
+        intake: f.apIntake.value.trim(),
+        lead: f.apLead.value.trim(),
+        inviteTitle: f.apInviteTitle.value.trim(),
+        inviteText: f.apInviteText.value.trim(),
+        lookingTitle: f.apLookingTitle.value.trim(),
+        smallprint: f.apSmallprint.value.trim(),
+        closing: f.apClosing.value.trim(),
+        scarcity: f.apScarcity.value.split(',').map(x => x.trim()).filter(Boolean).slice(0, 4),
+        looking: lines(f.apLooking.value, 6, 160),
+        marquee: lines(f.apMarquee.value, 8, 40),
+      });
+      ['ambassador', 'model'].forEach(k => {
+        Object.assign(ap.doors[k], {
+          eyebrow: f[`ap_${k}_eyebrow`].value.trim(),
+          cta: f[`ap_${k}_cta`].value.trim(),
+          ctaNote: f[`ap_${k}_ctaNote`].value.trim(),
+          title: lines(f[`ap_${k}_title`].value, 3, 40).join('\n'),
+          perksTitle: f[`ap_${k}_perksTitle`].value.trim(),
+          // "Heading | the sentence under it", one per line.
+          perks: lines(f[`ap_${k}_perks`].value, 6, 200)
+            .map(row => { const [t, ...rest] = row.split('|'); return [t.trim(), rest.join('|').trim()]; })
+            .filter(([t]) => t),
+        });
+      });
+    };
+    apForm.addEventListener('input', () => { apRead(); apDirty(); });
+    apForm.addEventListener('change', () => { apRead(); apDirty(); });
+
+    // The same photo picker the homepage hero uses, once for each page.
+    ['ambassador', 'model'].forEach(k => {
+      const draw = () => {
+        const list = apImg[k];
+        $(`#apPick_${k}`).innerHTML = `${list.length
+          ? `<div class="photo"><img src="${esc(photoSrc(list[0]))}" alt="">${list[0].file ? '<span class="photo__new">New</span>' : ''}</div>`
+          : '<div class="drop" style="aspect-ratio:16/10">No photo</div>'}
+          <div style="display:grid;gap:8px;justify-items:start">
+            <button type="button" class="btn btn--ghost btn--sm" data-pick="${k}">${list.length ? 'Change photo' : 'Add photo'}</button>
+            ${list.length ? `<button type="button" class="btn btn--ghost btn--sm" data-drop="${k}">Remove</button>` : ''}
+            <span class="hint">Sits behind the headline. Landscape works best.</span>
+          </div>`;
+      };
+      $(`#apPick_${k}`).onclick = e => {
+        if (e.target.closest('[data-pick]')) $(`#apInput_${k}`).click();
+        if (e.target.closest('[data-drop]')) { apImg[k].length = 0; draw(); apDirty(); }
+      };
+      $(`#apInput_${k}`).onchange = e => {
+        const list = [];
+        acceptFiles([...e.target.files].slice(0, 1), list, 1, ph => { if (apImg[k][0] === ph) { apImg[k].length = 0; draw(); } });
+        e.target.value = '';
+        if (list.length) { apImg[k].splice(0, 1, list[0]); draw(); apDirty(); }
+      };
+      draw();
+    });
+
+    // Which of the two pages the preview is showing.
+    const showDoor = k => {
+      apDoor = k;
+      const frame = $('#frame');
+      if (frame) frame.src = `${ROOT}${ap.doors[k].path}?preview=1`;
+      const label = $('.preview__url');
+      if (label) label.textContent = `spxtr.com/${ap.doors[k].path}`;
+    };
+    apForm.addEventListener('click', e => {
+      const b = e.target.closest('[data-see]');
+      if (b) { e.preventDefault(); showDoor(b.dataset.see); }
+    });
+    if (apDoor !== 'ambassador') showDoor(apDoor);
+
+    apForm.addEventListener('submit', async e => {
+      e.preventDefault();
+      apRead();
+      const before = [DATA.settings.apply?.doors?.ambassador?.image, DATA.settings.apply?.doors?.model?.image].filter(Boolean);
+      const ok = await withWrite('Enter your admin password to save the application pages.', async () => {
+        const [amb] = await uploadAll(apImg.ambassador, 'pages');
+        const [mod] = await uploadAll(apImg.model, 'pages');
+        ap.doors.ambassador.image = amb || '';
+        ap.doors.model.image = mod || '';
+        const next = { ...DATA.settings, apply: clone(ap) };
+        await CMS.saveSettings(next);
+        DATA.settings = CMS.mergeSettings(next);
+        await CMS.removeImages(dropped(before, [amb, mod].filter(Boolean)));
+      });
+      if (!ok) return;
+      dirty = false; $('#apDirty').hidden = true;
+      toast('Application pages updated');
+    });
 
     $('#ambKinds').addEventListener('click', e => {
       const b = e.target.closest('[data-k]'); if (!b) return;
@@ -1435,33 +1606,6 @@ if (window.top !== window.self) { document.documentElement.innerHTML = ''; throw
       acceptFiles(files.slice(0, 1), list, 1, ph => { if (hero[0] === ph) { hero.length = 0; drawHero(); } });
       if (list.length) { hero.splice(0, 1, list[0]); drawHero(); markDirty(); }
     }
-    // The same picker as the hero's, once for each door.
-    ['ambassador', 'model'].forEach(k => {
-      const draw = () => {
-        const list = apImg[k];
-        $(`#apPick_${k}`).innerHTML = `${list.length
-          ? `<div class="photo"><img src="${esc(photoSrc(list[0]))}" alt="">${list[0].file ? '<span class="photo__new">New</span>' : ''}</div>`
-          : '<div class="drop" style="aspect-ratio:16/10">No photo</div>'}
-          <div style="display:grid;gap:8px;justify-items:start">
-            <button type="button" class="btn btn--ghost btn--sm" data-pick="${k}">${list.length ? 'Change photo' : 'Add photo'}</button>
-            ${list.length ? `<button type="button" class="btn btn--ghost btn--sm" data-drop="${k}">Remove</button>` : ''}
-            <span class="hint">Sits behind the headline. Landscape works best.</span>
-          </div>`;
-        $(`#apPick_${k}`).onclick = e => {
-          const pick = e.target.closest('[data-pick]'), drop = e.target.closest('[data-drop]');
-          if (pick) $(`#apInput_${k}`).click();
-          if (drop) { apImg[k].length = 0; draw(); markDirty(); }
-        };
-      };
-      $(`#apInput_${k}`).onchange = e => {
-        const list = [];
-        acceptFiles([...e.target.files].slice(0, 1), list, 1, ph => { if (apImg[k][0] === ph) { apImg[k].length = 0; draw(); } });
-        e.target.value = '';
-        if (list.length) { apImg[k].splice(0, 1, list[0]); draw(); markDirty(); }
-      };
-      draw();
-    });
-
     $('#heroInput').onchange = e => { onHeroFiles([...e.target.files]); e.target.value = ''; };
     drawHero();
     read();
@@ -1762,12 +1906,6 @@ if (window.top !== window.self) { document.documentElement.innerHTML = ''; throw
     setTitle('Homepage & settings');
     const s = clone(DATA.settings);
     const heroImg = s.hero.image ? [{ url: s.hero.image }] : [];
-    // The application pages: shared wording, and a header photo for each of the two doors.
-    const ap = s.apply = { ...DEFAULT_SETTINGS.apply, ...(s.apply || {}) };
-    ap.doors = { ambassador: { ...DEFAULT_SETTINGS.apply.doors.ambassador, ...(ap.doors?.ambassador || {}) },
-                 model: { ...DEFAULT_SETTINGS.apply.doors.model, ...(ap.doors?.model || {}) } };
-    const apImg = { ambassador: ap.doors.ambassador.image ? [{ url: ap.doors.ambassador.image }] : [],
-                    model: ap.doors.model.image ? [{ url: ap.doors.model.image }] : [] };
     const ev = s.event;
     const evImg = [withPhoto(ev)];
     const testedImgs = (s.tested.images || []).map(u => ({ ph: u ? { url: u } : null }));
@@ -1827,47 +1965,6 @@ if (window.top !== window.self) { document.documentElement.innerHTML = ''; throw
           <div class="section">
             <h3>Under the hero <small>Four short promises, one per line. Use {free} for the free-shipping amount</small></h3>
             <textarea name="heroBar" rows="4" maxlength="300">${esc((s.hero.bar || []).join('\n'))}</textarea>
-          </div>
-          <div class="section">
-            <h3>Ambassador &amp; model pages <small>The two application pages — /ambassadors/ and /models/</small></h3>
-            <p class="hint" style="margin:0 0 14px">These stay open even while the store is closed, and the coming soon page links to both.</p>
-            <div class="field-row">
-              <label>Intake label <span class="hint">Shown top right and on the file</span><input name="apIntake" maxlength="40" value="${esc(ap.intake)}"></label>
-              <label>Section heading above the list<input name="apLookingTitle" maxlength="60" value="${esc(ap.lookingTitle || '')}"></label>
-            </div>
-            <label>Opening paragraph <span class="hint">Under the headline on both pages</span>
-              <textarea name="apLead" rows="3" maxlength="400">${esc(ap.lead)}</textarea></label>
-            <div class="field-row">
-              <label>Invitation heading<input name="apInviteTitle" maxlength="90" value="${esc(ap.inviteTitle || '')}"></label>
-              <label>Plates beside the headline <span class="hint">Comma separated</span><input name="apScarcity" maxlength="120" value="${esc((ap.scarcity || []).join(', '))}"></label>
-            </div>
-            <label>Invitation paragraph<textarea name="apInviteText" rows="3" maxlength="500">${esc(ap.inviteText || '')}</textarea></label>
-            <label>Who gets in <span class="hint">One line each</span>
-              <textarea name="apLooking" rows="4" maxlength="600">${esc((ap.looking || []).join('\n'))}</textarea></label>
-            <label>Ticker words <span class="hint">One per line</span>
-              <textarea name="apMarquee" rows="4" maxlength="400">${esc((ap.marquee || []).join('\n'))}</textarea></label>
-            <label>Small print<textarea name="apSmallprint" rows="2" maxlength="500">${esc(ap.smallprint || '')}</textarea></label>
-            <label>Closing line <span class="hint">In the footer of both pages</span><input name="apClosing" maxlength="200" value="${esc(ap.closing || '')}"></label>
-
-            ${['ambassador', 'model'].map(k => `
-              <div class="section section--sub">
-                <h4>${k === 'model' ? 'Model page' : 'Ambassador page'} <small>/${esc(ap.doors[k].path)}</small></h4>
-                <div class="field-row">
-                  <label>Small text above<input name="ap_${k}_eyebrow" maxlength="60" value="${esc(ap.doors[k].eyebrow)}"></label>
-                  <label>Button text<input name="ap_${k}_cta" maxlength="40" value="${esc(ap.doors[k].cta)}"></label>
-                </div>
-                <div class="field-row">
-                  <label>Headline <span class="hint">One line per row</span>
-                    <textarea name="ap_${k}_title" rows="2" maxlength="80">${esc(ap.doors[k].title)}</textarea></label>
-                  <label>Heading above the list of what they get<input name="ap_${k}_perksTitle" maxlength="60" value="${esc(ap.doors[k].perksTitle || '')}"></label>
-                </div>
-                <label>Line under the coming soon button<input name="ap_${k}_ctaNote" maxlength="160" value="${esc(ap.doors[k].ctaNote || '')}"></label>
-                <label>What they get <span class="hint">One per line, as "Heading | the sentence under it"</span>
-                  <textarea name="ap_${k}_perks" rows="4" maxlength="800">${esc((ap.doors[k].perks || []).map(([t, d]) => `${t} | ${d}`).join('\n'))}</textarea></label>
-                <label>Header photo</label>
-                <div class="hero-pick" id="apPick_${k}"></div>
-                <input type="file" id="apInput_${k}" accept="image/jpeg,image/png,image/webp,image/avif,image/heic,image/heif,.heic,.heif" hidden>
-              </div>`).join('')}
           </div>
           <div class="section">
             <h3>Scrolling ticker <small>The moving strip under the hero, one word or phrase per line</small></h3>
@@ -2058,16 +2155,10 @@ if (window.top !== window.self) { document.documentElement.innerHTML = ''; throw
     const send = wirePreview(() => ({ settings: {
       ...s,
       hero: { ...s.hero, image: heroImg[0] ? photoDraft(heroImg[0]) : '' },
-      // So a header photo that hasn't been saved yet still shows in the live preview.
-      apply: { ...ap, doors: {
-        ambassador: { ...ap.doors.ambassador, image: apImg.ambassador[0] ? photoDraft(apImg.ambassador[0]) : '' },
-        model: { ...ap.doors.model, image: apImg.model[0] ? photoDraft(apImg.model[0]) : '' },
-      } },
       event: { ...s.event, image: evImg[0].ph ? photoDraft(evImg[0].ph) : '' },
       tested: { ...s.tested, images: testedImgs.map(x => (x.ph ? photoDraft(x.ph) : '')), specs: specs.map(r => ({ label: r.specLabel, value: r.specValue })) },
     } }));
     const markDirty = () => { dirty = true; $('#dirtyFlag').hidden = false; send(); };
-    const lines = (value, max, len) => value.split('\n').map(x => x.trim()).filter(Boolean).slice(0, max).map(x => x.slice(0, len));
     const read = () => {
       const f = form;
       s.announcements = lines(f.announcements.value, 8, 80);
@@ -2087,32 +2178,6 @@ if (window.top !== window.self) { document.documentElement.innerHTML = ''; throw
       s.instagram = f.instagram.value.trim();
       Object.assign(s.comingSoon, { eyebrow: f.csEyebrow.value.trim(), title: f.csTitle.value.trim(), text: f.csText.value.trim(), showEmail: f.csEmail.checked });
       Object.assign(s.event, { show: f.evShow.checked, kind: f.evKind.value === 'drop' ? 'drop' : 'event', name: f.evName.value.trim(), round: f.evRound.value.trim(), place: f.evPlace.value.trim(), date: f.evDate.value, blurb: f.evBlurb.value.trim() });
-      // The two application pages.
-      Object.assign(ap, {
-        intake: f.apIntake.value.trim(),
-        lead: f.apLead.value.trim(),
-        inviteTitle: f.apInviteTitle.value.trim(),
-        inviteText: f.apInviteText.value.trim(),
-        lookingTitle: f.apLookingTitle.value.trim(),
-        smallprint: f.apSmallprint.value.trim(),
-        closing: f.apClosing.value.trim(),
-        scarcity: f.apScarcity.value.split(',').map(x => x.trim()).filter(Boolean).slice(0, 4),
-        looking: lines(f.apLooking.value, 6, 160),
-        marquee: lines(f.apMarquee.value, 8, 40),
-      });
-      ['ambassador', 'model'].forEach(k => {
-        Object.assign(ap.doors[k], {
-          eyebrow: f[`ap_${k}_eyebrow`].value.trim(),
-          cta: f[`ap_${k}_cta`].value.trim(),
-          ctaNote: f[`ap_${k}_ctaNote`].value.trim(),
-          title: lines(f[`ap_${k}_title`].value, 3, 40).join('\n'),
-          perksTitle: f[`ap_${k}_perksTitle`].value.trim(),
-          // "Heading | the sentence under it", one per line.
-          perks: lines(f[`ap_${k}_perks`].value, 6, 200)
-            .map(row => { const [t, ...rest] = row.split('|'); return [t.trim(), rest.join('|').trim()]; })
-            .filter(([t]) => t),
-        });
-      });
     };
     form.addEventListener('input', e => { if (e.target.closest('.items')) return; read(); markDirty(); });
     form.addEventListener('change', e => { if (e.target.closest('.items')) return; read(); markDirty(); });
@@ -2148,10 +2213,6 @@ if (window.top !== window.self) { document.documentElement.innerHTML = ''; throw
       const before = [DATA.settings.hero.image, DATA.settings.event.image, ...DATA.settings.tested.images].filter(Boolean);
       const ok = await withWrite('Enter your admin password to update the homepage.', async () => {
         const [img] = await uploadAll(heroImg, 'pages');
-        const [apAmb] = await uploadAll(apImg.ambassador, 'pages');
-        const [apMod] = await uploadAll(apImg.model, 'pages');
-        ap.doors.ambassador.image = apAmb || '';
-        ap.doors.model.image = apMod || '';
         const evSaved = await savePhotos(evImg);
         const testedSaved = await savePhotos(testedImgs);
         progress('Saving…');

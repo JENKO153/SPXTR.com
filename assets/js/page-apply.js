@@ -13,9 +13,21 @@
   const DOOR = document.body.dataset.kind === 'model' ? 'model' : 'ambassador';
 
   try {
-    const data = await CMS.loadPublic();
+    // In the admin's live preview the draft arrives by message instead of from the database.
+    const data = PREVIEW ? await previewData() : await CMS.loadPublic();
     SITE = CMS.mergeSettings(data?.settings || {});
   } catch { SITE = CMS.mergeSettings({}); }
+
+  // Everything below is drawn from the settings, so an edit in the admin only has to call this
+  // again. Listeners that belong to the window rather than the page are set up once.
+  let wired = false;
+  render();
+  onPreview(draft => {
+    if (draft?.settings) SITE = CMS.mergeSettings(draft.settings);
+    render();
+  });
+
+  function render() {
   applyStoreAccent();
   applyTheme();
 
@@ -26,7 +38,7 @@
   document.title = `${door.eyebrow} — ${STORE.name}`;
   $('#apply-intake').textContent = `${A.intake} // applications open`;
   $('#apply-foot-note').textContent = A.closing || '';
-  if (ig) $('#apply-by').insertAdjacentHTML('beforebegin',
+  if (ig && !$('.ap__foot .link-arrow')) $('#apply-by').insertAdjacentHTML('beforebegin',
     `<a class="link-arrow" href="${esc(ig)}" target="_blank" rel="noopener noreferrer">${esc(SITE.instagram || 'Instagram')} ${ICON.arrow}</a>`);
 
   /* ---------------- fields ---------------- */
@@ -162,19 +174,21 @@
   // The opening stages itself in: the headline lines are masked until the hero is up.
   requestAnimationFrame(() => $('.ap-hero')?.classList.add('in'));
 
-  // How far down the page you are, drawn in gold across the top. motion.js already measures
-  // this for its own read line, so this only has to follow it.
-  const bar = document.createElement('div');
-  bar.className = 'ap-progress';
-  bar.setAttribute('aria-hidden', 'true');
-  document.body.appendChild(bar);
-  const follow = () => {
-    const max = document.documentElement.scrollHeight - innerHeight;
-    bar.style.setProperty('--read', max > 0 ? (scrollY / max).toFixed(4) : 0);
-  };
-  addEventListener('scroll', follow, { passive: true });
-  addEventListener('resize', follow);
-  follow();
+  // How far down the page you are, drawn in gold across the top.
+  if (!wired) {
+    wired = true;
+    const bar = document.createElement('div');
+    bar.className = 'ap-progress';
+    bar.setAttribute('aria-hidden', 'true');
+    document.body.appendChild(bar);
+    const follow = () => {
+      const max = document.documentElement.scrollHeight - innerHeight;
+      bar.style.setProperty('--read', max > 0 ? (scrollY / max).toFixed(4) : 0);
+    };
+    addEventListener('scroll', follow, { passive: true });
+    addEventListener('resize', follow);
+    follow();
+  }
   fillTicker($('#ap-ticker'), (A.marquee || []).map(w => `<span>${esc(w)}</span>`).join(''));
   const shot = safeUrl(door.image || SITE.hero?.image || SITE.newsletter?.image || '');
   if (shot) $('.ap-hero__bg').style.backgroundImage = `url("${shot}")`;
@@ -339,4 +353,5 @@
 
   shapeForm();
   document.documentElement.classList.remove('is-loading');
+  }
 })();

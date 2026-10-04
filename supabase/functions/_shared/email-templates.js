@@ -374,7 +374,7 @@ const STATUS_COPY = {
   declined: {
     eyebrow: 'Application // closed',
     title: 'Not this<br>time.',
-    intro: 'We can only take a handful of riders each season, and this round is full.',
+    intro: 'We can only take a handful of people each season, and this round is full.',
     line: 'This isn\'t a no forever. Keep sending it, keep building, and come back to us next season.',
   },
   new: {
@@ -436,7 +436,7 @@ export function applicationAlertEmail({ site, accent, app }) {
     subject: `${what} application — ${app.name} (${app.ref})`,
     html: layout({
       site, accent,
-      preheader: `${app.name} wants to ${app.kind === 'model' ? 'model' : 'ride'} for SPXTR.`,
+      preheader: `${app.name} wants to ${app.kind === 'model' ? 'model' : 'represent'} SPXTR.`,
       eyebrowText: `${what} // ${app.ref}`,
       title: 'New<br>application.',
       intro: `${app.name} has applied to the ${what.toLowerCase()} programme.`,

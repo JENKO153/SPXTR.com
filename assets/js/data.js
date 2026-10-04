@@ -87,13 +87,13 @@ const DEFAULT_SETTINGS = {
     doors: {
       ambassador: {
         path: 'ambassadors/', role: 'SPXTR Brand Ambassador', image: '',
-        eyebrow: 'Ambassador programme', title: 'Ride for\nSPXTR.', perksTitle: 'Backed properly.',
-        cta: 'Apply to represent', ctaNote: 'Riders, racers, lifters and builders — put your name forward before we open.',
+        eyebrow: 'Ambassador programme', title: 'Represent\nSPXTR.', perksTitle: 'Backed properly.',
+        cta: 'Apply to represent', ctaNote: 'Wear it, live it, put your name forward before we open.',
         perks: [
           ['Kit, every drop', 'Seasonal kit before it goes on sale, in your size, replaced when you destroy it.'],
           ['Your own code', 'A discount code with your name on it, and a cut of everything it sells.'],
-          ['On the site', 'Your face, your bike and your results on the team page and in the drops.'],
-          ['Events and activations', 'Entry, fuel and a spot in the pits at the events we run.'],
+          ['On the site', 'Your face and your name on the team page and through the drops.'],
+          ['Events and activations', 'A spot on the crew at the events, launches and activations we run.'],
         ],
       },
       model: {
