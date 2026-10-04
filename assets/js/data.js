@@ -62,6 +62,185 @@ const DEFAULT_SETTINGS = {
     australia: { on: true, from: '01-24', to: '01-27' },
   },
 
+  /* Applications to join the collective.
+     One form. People choose whether they are applying as an ambassador, a model or both, and the
+     sections that only apply to one of those appear when they pick it. Everything below — the
+     wording, the questions, the options — is data, so the form is changed here, not in the page.
+
+     Field shapes: text | email | tel | number | date | textarea | radio | checks | consent | photo
+     "when" limits a section or a field to one kind of applicant. */
+  apply: {
+    on: true,
+    intake: 'Intake 004',
+    minAge: 18,
+    lead: 'We are looking for confident, reliable and motivated people who connect with our fearless identity and want to represent SPXTR through content, events, motorsport, modelling and community.',
+    scarcity: ['18+', 'Season 04', 'Read by the crew'],
+    marquee: ['Ambassadors', 'Models', 'Motorsport', 'Fearless crew', 'Content', 'Events'],
+    closing: 'Every application gets an answer. You will hear from us at each stage by email.',
+    smallprint: 'Applying does not guarantee selection, paid work or ongoing opportunities. Any payment, gifted product, commission or campaign arrangement is confirmed before each opportunity.',
+
+    /* The two ways in. Each sets the opening copy and preselects the role, and both lead to the
+       same form. */
+    doors: {
+      ambassador: {
+        path: 'ambassadors/', role: 'SPXTR Brand Ambassador',
+        eyebrow: 'Ambassador programme', title: 'Ride for\nSPXTR.',
+        cta: 'Apply to represent', ctaNote: 'Riders, racers, lifters and builders — put your name forward before we open.',
+        perks: [
+          ['Kit, every drop', 'Seasonal kit before it goes on sale, in your size, replaced when you destroy it.'],
+          ['Your own code', 'A discount code with your name on it, and a cut of everything it sells.'],
+          ['On the site', 'Your face, your bike and your results on the team page and in the drops.'],
+          ['Events and activations', 'Entry, fuel and a spot in the pits at the events we run.'],
+        ],
+      },
+      model: {
+        path: 'models/', role: 'SPXTR Model',
+        eyebrow: 'Model casting', title: 'Front the\nseason.',
+        cta: 'Apply to model', ctaNote: 'Shot on real people. Put your book in front of us.',
+        perks: [
+          ['Paid, properly', 'Terms agreed before every shoot. Paid, gifted, commission or affiliate — you are told which, first.'],
+          ['Images for your book', 'Full-resolution shots to use however you like.'],
+          ['Credited everywhere', 'Your name and handle on every post the images appear in.'],
+          ['Studio and location', 'Fashion, motorsport, activewear, outdoor shoots and event promotion.'],
+        ],
+      },
+    },
+
+    looking: [
+      'You live it. Motorsport, the gym, the mountain, the community — something real.',
+      'You turn up, on time, and you take direction.',
+      'You wear the kit because you like it, not because you were paid to.',
+      'You are decent to the people around you. No exceptions.',
+    ],
+
+    sections: [
+      ['Personal details', 'The basics, and a couple of things we have to ask.', null, [
+        ['legal_name', 'Full legal name', { required: true, max: 80, half: true, autocomplete: 'name' }],
+        ['preferred_name', 'Preferred name', { max: 60, half: true }],
+        ['dob', 'Date of birth', { type: 'date', required: true, half: true }],
+        ['pronouns', 'Pronouns', { max: 40, half: true }],
+        ['email', 'Email address', { type: 'email', required: true, max: 200, half: true, autocomplete: 'email' }],
+        ['phone', 'Mobile number', { type: 'tel', required: true, max: 40, half: true, autocomplete: 'tel' }],
+        ['location', 'Suburb, city and state', { required: true, max: 120 }],
+        ['work_rights', 'Are you legally able to work in Australia?', { type: 'radio', required: true, options: ['Yes', 'No', 'Unsure'] }],
+        ['legal_matters', 'Do you have any outstanding legal matters or criminal history?', { type: 'radio', required: true, options: ['Yes', 'No'] }],
+        ['transport', 'Do you have reliable transport to attend shoots, events or activations?', { type: 'radio', required: true, options: ['Yes', 'Sometimes', 'No'] }],
+      ]],
+
+      ['Application type', 'Pick what you are putting your name down for.', null, [
+        ['role', 'Which opportunity are you applying for?', { type: 'radio', required: true, role: true,
+          options: ['SPXTR Brand Ambassador', 'SPXTR Model', 'Both Ambassador and Model'] }],
+        ['interest', 'What interests you most about joining SPXTR Collective?', { type: 'textarea', required: true, max: 1200, rows: 4 }],
+        ['fearless', 'What does "Live Fearless" mean to you?', { type: 'textarea', required: true, max: 1200, rows: 4 }],
+        ['fit', 'Why do you believe you would be a strong fit for SPXTR?', { type: 'textarea', required: true, max: 1200, rows: 4 }],
+        ['bring', 'What qualities, experience or personality would you bring to the team?', { type: 'textarea', required: true, max: 1200, rows: 4 }],
+      ]],
+
+      ['Interests and background', 'Tick everything that is actually you.', null, [
+        ['interests', 'Which areas are you involved in or interested in?', { type: 'checks', options: [
+          'Motorcycles', 'Motorsport', 'Automotive', 'Gym and fitness', 'Bodybuilding', 'Combat sports',
+          'Extreme sports', 'Snow sports', 'Skateboarding', 'BMX or mountain biking', 'Surfing',
+          'Military or veteran community', 'First responder community', 'Fashion or streetwear', 'Modelling',
+          'Photography or videography', 'Content creation', 'Gaming', 'Music', 'Events and promotions', 'Other'] }],
+        ['background', 'Tell us about your interests, experience and community involvement.', { type: 'textarea', required: true, max: 1500, rows: 4 }],
+        ['competing', 'Do you compete, race, train, perform or take part in anything relevant?', { type: 'textarea', max: 900, rows: 3 }],
+        ['groups', 'Are you connected with any clubs, teams, gyms, businesses or community groups?', { type: 'textarea', max: 900, rows: 3 }],
+      ]],
+
+      ['Social media and content', 'However big or small — we care more about what you post than how many see it.', null, [
+        ['instagram', 'Instagram', { max: 60, half: true, placeholder: 'yourhandle' }],
+        ['tiktok', 'TikTok', { max: 60, half: true, placeholder: 'yourhandle' }],
+        ['facebook', 'Facebook page or profile', { max: 120, half: true }],
+        ['youtube', 'YouTube channel', { max: 120, half: true }],
+        ['other_link', 'Other website, portfolio or social link', { max: 200 }],
+        ['content_types', 'Which types of content are you comfortable creating?', { type: 'checks', options: [
+          'Photos', 'Short-form videos or Reels', 'Product demonstrations', 'Unboxings', 'Lifestyle content',
+          'Motorsport or automotive content', 'Fitness content', 'Event coverage', 'Behind-the-scenes content',
+          'Interviews', 'Live videos', 'Written reviews', 'Promotional posts', 'Other'] }],
+        ['post_often', 'How often do you post?', { type: 'radio', options: [
+          'Daily', 'Several times per week', 'Weekly', 'Occasionally', 'I am new to content creation'] }],
+        ['audience', 'Tell us about your audience and the content you make.', { type: 'textarea', max: 1200, rows: 3 }],
+        ['disclosure', 'Are you comfortable tagging SPXTR and clearly identifying sponsored, gifted or affiliate content when required?',
+          { type: 'radio', required: true, options: ['Yes', 'No', 'I would like more information'] }],
+      ]],
+
+      ['Ambassador questions', 'Because you are applying to represent us.', 'ambassador', [
+        ['amb_why', 'Why would you like to represent SPXTR as an ambassador?', { type: 'textarea', max: 1200, rows: 4 }],
+        ['amb_authentic', 'How would you promote SPXTR in a way that is actually you?', { type: 'textarea', max: 1200, rows: 4 }],
+        ['amb_opportunities', 'Which ambassador opportunities interest you?', { type: 'checks', options: [
+          'Social media promotion', 'Product launches', 'Affiliate or discount-code promotion', 'Events and activations',
+          'Motorsport events', 'Community meet-ups', 'Photoshoots', 'Video campaigns', 'Product testing and feedback',
+          'Giveaways and competitions', 'Other'] }],
+        ['amb_previous', 'Have you worked as a brand ambassador or affiliate before?', { type: 'textarea', max: 900, rows: 3 }],
+        ['amb_current', 'Are you currently representing any other brands?', { type: 'textarea', max: 900, rows: 3 }],
+        ['amb_conflicts', 'Any competing brands or agreements we should know about?', { type: 'textarea', max: 900, rows: 3 }],
+      ]],
+
+      ['Model questions', 'Because you are applying to be in front of the lens.', 'model', [
+        ['mod_experience_level', 'Do you have modelling, promotional or photoshoot experience?', { type: 'radio', options: [
+          'Yes', 'Some experience', 'No, but I am interested in learning'] }],
+        ['mod_experience', 'Describe your modelling or promotional experience.', { type: 'textarea', max: 1200, rows: 3 }],
+        ['mod_comfortable', 'Which opportunities are you comfortable being considered for?', { type: 'checks', options: [
+          'Fashion and streetwear', 'Motorsport-inspired clothing', 'Jumpsuits and bodysuits', 'Activewear',
+          'Lifestyle photography', 'Product photography', 'Studio photography', 'Outdoor location shoots',
+          'Event promotions', 'Video campaigns', 'Runway or live presentations', 'Other'] }],
+        ['mod_limits', 'Any clothing styles, poses, settings or content you are NOT comfortable with?',
+          { type: 'textarea', required: true, max: 1200, rows: 3, hint: 'Say so plainly. It is respected, and it is never held against an application.' }],
+        ['mod_direction', 'Are you comfortable taking direction from a photographer or creative director?',
+          { type: 'radio', options: ['Yes', 'No', 'It depends on the project'] }],
+        ['mod_others', 'Are you comfortable working alongside other models?', { type: 'radio', options: ['Yes', 'No', 'It depends on the project'] }],
+        ['mod_size', 'Clothing size', { max: 40, half: true }],
+        ['mod_height', 'Approximate height', { max: 20, half: true, placeholder: `178cm / 5'10"` }],
+        ['mod_shoe', 'Shoe size', { max: 12, half: true }],
+        ['mod_fit', 'Any relevant sizing or fit information', { type: 'textarea', max: 600, rows: 2 }],
+      ]],
+
+      ['Availability', 'So we know when we can get you.', null, [
+        ['days', 'What days are you generally available?', { type: 'checks', options: [
+          'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday', 'Availability varies'] }],
+        ['evenings', 'Available for occasional evening or weekend events?', { type: 'radio', options: ['Yes', 'Sometimes', 'No'] }],
+        ['travel', 'Willing to travel for approved shoots or events?', { type: 'radio', options: [
+          'Yes', 'Within my local area', 'Within my state', 'Interstate', 'It depends on the opportunity', 'No'] }],
+        ['availability_notes', 'Any availability restrictions we should know about?', { type: 'textarea', max: 900, rows: 3 }],
+      ]],
+
+      ['Safety and conduct', 'Short, and it matters.', null, [
+        ['licences', 'Do you hold any relevant licences, qualifications or certifications?', { type: 'checks', options: [
+          'Motorcycle licence', "Driver's licence", 'Motorsport licence', 'First aid certificate',
+          'Responsible service of alcohol', 'Working with children clearance', 'Fitness qualification', 'Other', 'None'] }],
+        ['licence_notes', 'Details of any relevant qualifications or experience', { type: 'textarea', max: 900, rows: 3 }],
+        ['safety_ok', 'Do you agree to follow reasonable safety instructions at shoots, events and activations?',
+          { type: 'radio', required: true, options: ['Yes', 'No'] }],
+        ['conduct_ok', 'Do you agree to behave professionally and respectfully toward team members, staff, photographers, event organisers and the public?',
+          { type: 'radio', required: true, options: ['Yes', 'No'] }],
+        ['access_needs', 'Anything we should know to make this safe and accessible for you?', { type: 'textarea', max: 900, rows: 3 }],
+      ]],
+
+      ['Photos and portfolio', 'Current, unfiltered images that actually look like you. Nothing nude, intimate or explicit.', null, [
+        ['photo_face', 'A clear, recent photo of you', { type: 'photo', required: true }],
+        ['photo_full', 'A full-length photo', { type: 'photo', whenRequired: 'model',
+          hint: 'Required if you are applying to model.' }],
+        ['portfolio', 'Portfolio, media kit or other content link', { max: 200 }],
+      ], 'Sending images with your application does not give SPXTR permission to publish them. Separate permission or a signed agreement is obtained before anything is used publicly.'],
+
+      ['Final', 'Last bit.', null, [
+        ['heard', 'How did you hear about SPXTR Collective?', { type: 'radio', options: [
+          'Instagram', 'TikTok', 'Facebook', 'Friend or team member', 'Event', 'Website', 'Advertisement', 'Other'] }],
+        ['anything_else', 'Anything else you would like us to know?', { type: 'textarea', max: 1200, rows: 3 }],
+        ['consent', 'Please confirm', { type: 'consent', required: true, options: [
+          'I am at least 18 years old.',
+          'The information in this application is accurate.',
+          'I understand that applying does not guarantee selection or paid work.',
+          'I understand opportunities may be paid, gifted, commission-based, affiliate-based or unpaid, depending on the arrangement.',
+          'I understand the terms of each opportunity are given to me before I choose whether to take part.',
+          'I consent to SPXTR contacting me about my application and relevant opportunities.',
+          'I agree to treat SPXTR team members and other applicants respectfully.',
+          'I understand I may withdraw my application by contacting SPXTR.'] }],
+        ['signature', 'Type your full name', { required: true, max: 80, half: true, hint: 'This stands as your signature on the answers above.' }],
+      ]],
+    ],
+  },
+
   // The "coming soon" curtain (Admin -> Homepage & settings). The switch itself lives in the database.
   comingSoon: {
     eyebrow: 'SPXTR Collective',

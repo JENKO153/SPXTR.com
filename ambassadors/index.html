@@ -2,9 +2,8 @@
 <html lang="en" class="is-loading">
 <head>
   <meta charset="utf-8">
-  <!-- Pages live in their own folder (/shop/ etc.); every link and file below is relative to the site root. -->
+  <!-- Pages live in their own folder; every link and file below is relative to the site root. -->
   <base href="../">
-  <!-- Favicon: black ghost for light browser tabs, white ghost for dark ones -->
   <link rel="icon" type="image/png" sizes="32x32" href="assets/brand/ghost-black-32.png" media="(prefers-color-scheme: light)">
   <link rel="icon" type="image/png" sizes="32x32" href="assets/brand/ghost-white-32.png" media="(prefers-color-scheme: dark)">
   <link rel="icon" type="image/png" sizes="192x192" href="assets/brand/ghost-black-192.png" media="(prefers-color-scheme: light)">
@@ -12,37 +11,39 @@
   <link rel="apple-touch-icon" href="assets/brand/apple-touch-icon.png">
   <meta name="theme-color" content="#0A0A0A">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Product — SPXTR</title>
+  <title>Ambassador programme — SPXTR</title>
+  <meta name="description" content="A handful of riders each season get backed by SPXTR. Put your name forward.">
+  <!-- This page stays open while the store is closed, so it is not indexed until launch. -->
+  <meta name="robots" content="noindex">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Stencil+Display:wght@700;800;900&family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&family=JetBrains+Mono:wght@400;500&family=Metal+Mania&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="assets/css/store.css?v=202610040315">
   <script src="assets/js/accent.js?v=202610040315"></script>
 </head>
-<body>
-  <div id="chrome-top"></div>
+<body class="ap" data-kind="ambassador">
+  <header class="ap__top">
+    <a class="logo" href="./" aria-label="SPXTR home" id="ap-logo">
+      <span class="logo__head"><img class="logo__ghost" src="assets/brand/spxtr-ghost.jpg" alt="" data-fallback="ghost"></span>
+      <img class="logo__word" src="assets/brand/spxtr-wordmark.jpg" alt="SPXTR" data-fallback="word">
+    </a>
+    <span class="ap__intake" id="apply-intake"></span>
+  </header>
 
-  <main class="wrap">
-    <div class="crumbs" style="padding-top:28px" id="crumbs"></div>
-    <div class="pdp" id="pdp"></div>
+  <main id="apply-main"></main>
 
-    <section class="reviews-section" id="reviews" hidden></section>
-
-    <section style="padding-bottom:120px" id="related-section">
-      <div class="section-head"><div><span class="eyebrow">// Complete the kit</span><h2 class="display">Pairs well with</h2></div></div>
-      <div class="products" id="related"></div>
-    </section>
-  </main>
-
-  <div id="chrome-bottom"></div>
+  <footer class="ap__foot">
+    <span id="apply-foot-note"></span>
+    <a class="soon__by" href="https://seventhboar.dev" target="_blank" rel="noopener noreferrer" id="apply-by"><span>Built by</span>
+      <img src="assets/brand/seventh-boar.webp" alt="Seventh Boar Development" loading="lazy"></a>
+  </footer>
 
   <script src="assets/js/config.js?v=202610040315"></script>
   <script src="assets/vendor/supabase-2.116.0.js?v=202610040315"></script>
   <script src="assets/js/data.js?v=202610040315"></script>
   <script src="assets/js/cms.js?v=202610040315"></script>
   <script src="assets/js/store.js?v=202610040315"></script>
-  <script src="assets/js/reviews.js?v=202610040315"></script>
   <script src="assets/js/motion.js?v=202610040315" defer></script>
-  <script src="assets/js/page-product.js?v=202610040315"></script>
+  <script src="assets/js/page-apply.js?v=202610040315"></script>
 </body>
 </html>

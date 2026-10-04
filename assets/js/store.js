@@ -288,6 +288,9 @@ function showComingSoon() {
   const badKey = CMS.previewKeyTried?.();
   CMS.forgetPreviewKey?.();          // it didn't work, so don't keep trying it on every page
   const c = { ...(CMS.mergeSettings({}).comingSoon || {}), ...(SITE.comingSoon || {}) };
+  // The application pages stay open while the store is closed, so the curtain carries the way in.
+  const apply = { ...(CMS.mergeSettings({}).apply || {}), ...(SITE.apply || {}) };
+  const ways = ['ambassador', 'model'].map(k => apply[k]).filter(w => w && w.on !== false);
   const ig = instagramLink();
   document.title = `${c.title || 'Coming soon'} — ${STORE.name}`;
   document.body.className = 'soon';
@@ -302,6 +305,10 @@ function showComingSoon() {
         <input type="email" required maxlength="120" placeholder="Your email" aria-label="Your email">
         <button class="btn" type="submit">Notify me</button>
       </form>`}
+      ${ways.length ? `<div class="soon__ways">
+        ${ways.map(w => `<a class="btn btn--ghost" href="${esc(w.path)}">${esc(w.cta)}</a>`).join('')}
+      </div>
+      <span class="soon__amb-note">${esc(ways[0].ctaNote || '')}</span>` : ''}
       ${badKey ? `<p class="soon__bad">That preview link didn't work. It may have been cut short when it was copied, or replaced with a new one. Ask for a fresh link from Admin → Homepage &amp; settings.</p>` : ''}
       ${ig ? `<a class="link-arrow" href="${esc(ig)}" target="_blank" rel="noopener noreferrer">${esc(SITE.instagram || 'Instagram')} ${ICON.arrow}</a>` : ''}
       <a class="soon__by" href="${esc(STORE.builderUrl)}" target="_blank" rel="noopener noreferrer"><span>Built by</span>

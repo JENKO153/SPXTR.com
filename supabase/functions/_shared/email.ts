@@ -22,8 +22,10 @@ export async function loadAccent(db: { from: (t: string) => any }) {
 
 // Which address an email comes from. Orders use EMAIL_FROM. The launch list can use its own
 // address (LAUNCH_EMAIL_FROM) so shop mail and announcements can sit on different domains.
-export const senderFor = (kind: 'order' | 'launch' = 'order') =>
-  (kind === 'launch' ? Deno.env.get('LAUNCH_EMAIL_FROM') : '') || Deno.env.get('EMAIL_FROM');
+export const senderFor = (kind: 'order' | 'launch' | 'application' = 'order') =>
+  (kind === 'launch' ? Deno.env.get('LAUNCH_EMAIL_FROM')
+    : kind === 'application' ? (Deno.env.get('APPLICATIONS_EMAIL_FROM') || Deno.env.get('LAUNCH_EMAIL_FROM'))
+    : '') || Deno.env.get('EMAIL_FROM');
 
 // kind 'order' = one-to-one mail about something the customer did (confirmation, shipping). It
 // carries no bulk headers, which is what keeps it out of Gmail's Promotions tab.
@@ -78,6 +80,13 @@ export const shippingEmail = (site: string, o: Order, items: Item[]) => T.shippi
 export const shopNotificationEmail = (site: string, o: Order, items: Item[]) => T.shopNotificationEmail(ctx(site, o, items));
 export const reviewAlertEmail = (site: string, review: Record<string, unknown>, productName: string) =>
   T.reviewAlertEmail({ site, review, productName, accent: brand.accent, instagram: brand.instagram });
+
+export const applicationAppliedEmail = (site: string, kind: string, ref: string, name: string) =>
+  T.applicationAppliedEmail({ site, accent, instagram, kind, ref, name });
+export const applicationAlertEmail = (site: string, app: Record<string, unknown>) =>
+  T.applicationAlertEmail({ site, accent, app });
+export const applicationStatusEmail = (site: string, o: { kind: string; ref: string; name: string; status: string; message?: string }) =>
+  T.applicationStatusEmail({ site, accent, instagram, ...o });
 
 export const launchWelcomeEmail = (site: string, unsubUrl: string) =>
   T.launchWelcomeEmail({ site, unsubUrl, accent: brand.accent, instagram: brand.instagram });

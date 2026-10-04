@@ -854,6 +854,124 @@ revoke all on function public.launch_remove(text) from public, anon;
 grant execute on function public.launch_remove(text) to authenticated;
 
 -- ---------------------------------------------------------------------
+-- Applications: ambassadors and models
+-- People apply from /ambassadors/ or /models/, which stay open even while the store is closed.
+-- The form posts to the "applications" Edge Function, which validates it and writes the row with
+-- the service key -- the browser can never insert, read or change one. Admins read the list
+-- through application_list() and move one along with application_set_status(), which, like every
+-- other change on this site, needs a freshly confirmed password.
+--
+-- One table holds both kinds. They ask different questions, so anything that belongs to only one
+-- of them lives in "answers" (jsonb) rather than in a column that would be empty half the time.
+-- ---------------------------------------------------------------------
+create table if not exists public.applications (
+  id uuid primary key default gen_random_uuid(),
+  kind text not null default 'ambassador' check (kind in ('ambassador', 'model', 'both')),
+  -- What the applicant quotes when they get in touch: SPX-A-7K2Q9F / SPX-M-7K2Q9F.
+  ref text not null unique,
+  name text not null check (char_length(btrim(name)) between 2 and 80),
+  email text not null check (email ~ '^[^@[:space:]]+@[^@[:space:]]+\.[^@[:space:]]+$' and char_length(email) <= 200),
+  phone text check (phone is null or char_length(phone) <= 40),
+  location text check (location is null or char_length(location) <= 120),
+  age int check (age is null or age between 13 and 100),
+  instagram text check (instagram is null or char_length(instagram) <= 60),
+  tiktok text check (tiktok is null or char_length(tiktok) <= 60),
+  youtube text check (youtube is null or char_length(youtube) <= 120),
+  reach int check (reach is null or reach between 0 and 100000000),
+  links text check (links is null or char_length(links) <= 600),
+  why text check (why is null or char_length(why) <= 1500),
+  heard text check (heard is null or char_length(heard) <= 120),
+  -- Everything that belongs to one kind only: disciplines and results for a rider, height and
+  -- sizing for a model. Kept small on purpose.
+  answers jsonb not null default '{}'::jsonb check (pg_column_size(answers) < 32000),
+  -- Where it has got to. The applicant is emailed whenever this changes.
+  status text not null default 'new'
+    check (status in ('new', 'reviewing', 'shortlisted', 'accepted', 'declined')),
+  note text check (note is null or char_length(note) <= 2000),     -- private, never emailed
+  at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  ip_hash text
+);
+create index if not exists applications_at_idx on public.applications (kind, at desc);
+-- One application per person per kind: a rider may also apply to model.
+create unique index if not exists applications_email_idx on public.applications (kind, lower(email));
+alter table public.applications enable row level security;
+revoke all on public.applications from anon, authenticated;
+
+drop trigger if exists applications_touch on public.applications;
+create trigger applications_touch before update on public.applications
+  for each row execute function public.touch_updated_at();
+
+-- The whole list, for the admin screen.
+create or replace function public.application_list() returns jsonb
+language sql stable security definer set search_path = public as $$
+  select case when public.admin_ok() then coalesce((
+    select jsonb_agg(to_jsonb(x) order by x.at desc) from (
+      select id, kind, ref, name, email, phone, location, age, instagram, tiktok, youtube,
+             reach, links, why, heard, answers, status, note, at, updated_at
+      from public.applications order by at desc limit 2000) x), '[]'::jsonb)
+  else '[]'::jsonb end;
+$$;
+revoke all on function public.application_list() from public, anon;
+grant execute on function public.application_list() to authenticated;
+
+-- Move an application along. Returns the row so the Edge Function can write to the applicant.
+create or replace function public.application_set_status(app_id uuid, new_status text, admin_note text default null)
+returns jsonb
+language plpgsql volatile security definer set search_path = public as $$
+declare row_out public.applications;
+begin
+  if not public.can_write() then raise exception 'Not allowed. Confirm your password and try again.'; end if;
+  if new_status is not null and new_status not in ('new', 'reviewing', 'shortlisted', 'accepted', 'declined') then
+    raise exception 'Unknown status';
+  end if;
+  update public.applications
+     set status = coalesce(new_status, status),
+         note = case when admin_note is null then note else nullif(btrim(admin_note), '') end
+   where id = app_id
+  returning * into row_out;
+  if row_out.id is null then raise exception 'That application no longer exists'; end if;
+  insert into public.audit_log (user_id, email, action, entity, entity_id, summary)
+  values (auth.uid(), coalesce(public.actor_name(), 'Admin'), 'update', 'applications', row_out.id::text,
+          row_out.name || ' (' || row_out.ref || ') -> ' || row_out.status);
+  return to_jsonb(row_out);
+end $$;
+revoke all on function public.application_set_status(uuid, text, text) from public, anon;
+grant execute on function public.application_set_status(uuid, text, text) to authenticated;
+
+-- Remove an application outright (a duplicate, or someone asked to be taken off).
+create or replace function public.application_delete(app_id uuid) returns boolean
+language plpgsql volatile security definer set search_path = public as $$
+declare gone public.applications;
+begin
+  if not public.can_write() then raise exception 'Not allowed. Confirm your password and try again.'; end if;
+  delete from public.applications where id = app_id returning * into gone;
+  if gone.id is null then return false; end if;
+  insert into public.audit_log (user_id, email, action, entity, entity_id, summary)
+  values (auth.uid(), coalesce(public.actor_name(), 'Admin'), 'delete', 'applications', gone.id::text,
+          'Deleted application ' || gone.ref || ' from ' || gone.name);
+  return true;
+end $$;
+revoke all on function public.application_delete(uuid) from public, anon;
+grant execute on function public.application_delete(uuid) to authenticated;
+
+-- Photos sent with an application. A private bucket: the public cannot read it at all, and
+-- nothing is ever written from a browser -- the Edge Function stores the file with the service
+-- key after checking its type and size. Admins read it through short-lived signed links.
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values ('applications', 'applications', false, 6291456, array['image/jpeg', 'image/png', 'image/webp'])
+on conflict (id) do update set public = excluded.public, file_size_limit = excluded.file_size_limit,
+  allowed_mime_types = excluded.allowed_mime_types;
+
+drop policy if exists applications_admin_read on storage.objects;
+create policy applications_admin_read on storage.objects for select to authenticated
+  using (bucket_id = 'applications' and public.admin_ok());
+
+drop policy if exists applications_admin_delete on storage.objects;
+create policy applications_admin_delete on storage.objects for delete to authenticated
+  using (bucket_id = 'applications' and public.can_write());
+
+-- ---------------------------------------------------------------------
 -- Image storage: public to view, only a password-confirmed admin can upload/delete.
 -- Only jpg/png/webp/avif up to 8MB (no SVG — it can carry scripts).
 -- ---------------------------------------------------------------------

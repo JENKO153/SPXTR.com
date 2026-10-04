@@ -162,7 +162,7 @@ if (window.top !== window.self) { document.documentElement.innerHTML = ''; throw
     lastHash = location.hash;
     view.onclick = null; // views that need a delegated click handler set their own
     const [name, id] = (location.hash.slice(1) || 'overview').split('/');
-    const routes = { overview, orders, order: () => orderDetail(id), products, product: () => productEditor(id), pages, page: () => pageEditor(id), content: contentEditor, settings: settingsEditor, customise: customiseEditor, reviews, security };
+    const routes = { overview, orders, order: () => orderDetail(id), products, product: () => productEditor(id), pages, page: () => pageEditor(id), content: contentEditor, settings: settingsEditor, customise: customiseEditor, reviews, applications, security };
     (routes[name] || overview)();
     const navKey = { order: 'orders', product: 'products', page: 'pages' }[name] || name;
     $$('#nav a[data-route]').forEach(a => a.classList.toggle('active', a.dataset.route === navKey));
@@ -308,6 +308,182 @@ if (window.top !== window.self) { document.documentElement.innerHTML = ''; throw
   };
   const stars = n => `<span class="rv-admin__stars" aria-label="${n} out of 5">${'★'.repeat(n)}<span>${'★'.repeat(5 - n)}</span></span>`;
   let reviewFilter = null;
+  /* ---------------- applications: ambassadors and models ----------------
+     They arrive from /ambassadors/ and /models/. Moving one along emails the applicant, so the
+     status buttons go through the same password confirmation as every other change here. */
+  let ambKind = '', ambFilter = '', ambOpen = null, ambList = null;
+  const AMB_STATUS = {
+    new:        ['Unread',      'pill--accent'],
+    reviewing:  ['In review',   'pill--live'],
+    shortlisted:['Shortlisted', 'pill--live'],
+    accepted:   ['Accepted',    'pill--live'],
+    declined:   ['Not this time', 'pill--off'],
+  };
+  const AMB_NEXT = [
+    ['reviewing', 'Mark as in review', 'tell them it\'s being read'],
+    ['shortlisted', 'Shortlist', 'tell them they made the shortlist'],
+    ['accepted', 'Accept', 'tell them they\'re in'],
+    ['declined', 'Decline', 'let them down'],
+  ];
+
+  async function applications() {
+    setTitle('Applications');
+    if (!ambList) {
+      view.innerHTML = '<div class="panel"><div class="empty">Loading applications…</div></div>';
+      try { ambList = await CMS.applicationList(); }
+      catch (err) { view.innerHTML = `<div class="panel"><div class="empty">${esc(err.message)}</div></div>`; return; }
+    }
+    const all = ambList;
+    // Someone who applied for both belongs in both lists, not in a third one.
+    const isKind = (a, k) => { const v = a.kind || 'ambassador'; return !k || v === k || v === 'both'; };
+    const L = all.filter(a => isKind(a, ambKind));
+    const count = st => L.filter(a => a.status === st).length;
+    const kinds = [['', 'Everyone'], ['ambassador', 'Riders'], ['model', 'Models']];
+    const tabs = [['', 'All'], ['new', 'Unread'], ['reviewing', 'In review'], ['shortlisted', 'Shortlisted'], ['accepted', 'Accepted'], ['declined', 'Declined']];
+    view.innerHTML = `
+      ${CMS.mode === 'demo' ? '<div class="notice notice--demo"><b>Demo mode.</b> Applications sent from the ambassador and model pages land here.</div>' : ''}
+      <div class="panel">
+        <div class="toolbar">
+          <div class="seg" id="ambKinds" role="tablist">
+            ${kinds.map(([k, l]) => `<button type="button" role="tab" data-k="${k}" class="${ambKind === k ? 'on' : ''}">${l} <small>${k ? all.filter(a => isKind(a, k)).length : all.length}</small></button>`).join('')}
+          </div>
+          <span style="flex:1"></span>
+        </div>
+        <div class="toolbar">
+          <div class="seg" id="ambTabs" role="tablist">
+            ${tabs.map(([k, l]) => `<button type="button" role="tab" data-f="${k}" class="${ambFilter === k ? 'on' : ''}">${l} <small>${k ? count(k) : L.length}</small></button>`).join('')}
+          </div>
+          <span style="flex:1"></span>
+          <span class="muted" style="font-size:12px">Every change emails the applicant</span>
+        </div>
+        <div class="amb-admin" id="ambList"></div>
+      </div>`;
+
+    const row = a => {
+      const [label, cls] = AMB_STATUS[a.status] || AMB_STATUS.new;
+      const open = ambOpen === a.id;
+      const detail = (k, v) => (v ? `<div><span>${esc(k)}</span><b>${esc(String(v))}</b></div>` : '');
+      const social = (k, v, url) => (v ? `<div><span>${esc(k)}</span><b><a class="link" href="${esc(url)}" target="_blank" rel="noopener noreferrer">${esc(v)}</a></b></div>` : '');
+      const ans = a.answers || {};
+      // The answers are printed under the same headings the applicant saw, straight from the
+      // form's own description — add a question to the form and it shows up here by itself.
+      const sheet = (DATA.settings.apply || DEFAULT_SETTINGS.apply).sections || [];
+      const short = v => (Array.isArray(v) ? v.join(', ') : String(v));
+      const answered = (name, o) => {
+        const v = ans[name];
+        if (v === undefined || v === null || v === '' || (Array.isArray(v) && !v.length)) return '';
+        if (o?.type === 'photo') {
+          const stored = !/^https?:/i.test(String(v));
+          return `<p>${stored
+            ? `<a class="link" href="#" data-photo="${esc(String(v))}">Open photo (${esc(String(v).split('/').pop())})</a>`
+            : `<a class="link" href="${esc(String(v))}" target="_blank" rel="noopener noreferrer">${esc(String(v))}</a>`}</p>`;
+        }
+        return `<p>${esc(short(v))}</p>`;
+      };
+      const groups = sheet.map(([title, , when, fields]) => {
+        const rows = fields.map(([name, label, o]) => {
+          const body = answered(name, o);
+          return body ? `<h5>${esc(label)}</h5>${body}` : '';
+        }).join('');
+        return rows ? `<section class="amb-admin__group"><h4>${esc(title)}</h4>${rows}</section>` : '';
+      }).join('');
+      return `
+      <article class="amb-admin__item${open ? ' is-open' : ''}" data-id="${esc(a.id)}">
+        <button type="button" class="amb-admin__head" data-act="toggle">
+          <span class="pill ${cls}">${esc(label)}</span>
+          <span class="pill pill--off">${{ model: 'Model', both: 'Rider + model' }[a.kind] || 'Rider'}</span>
+          <b>${esc(a.name)}</b>
+          <span class="muted">${esc(a.location || '')}</span>
+          <span style="flex:1"></span>
+          <code>${esc(a.ref)}</code>
+          <time>${fmtDate(a.at)}</time>
+        </button>
+        ${open ? `
+        <div class="amb-admin__body">
+          <div class="amb-admin__grid">
+            ${detail('Email', a.email)}${detail('Phone', a.phone)}${detail('Age', a.age)}
+            ${detail('Where', a.location)}
+            ${social('Instagram', a.instagram, `https://www.instagram.com/${encodeURIComponent(a.instagram || '')}/`)}
+            ${social('TikTok', a.tiktok, `https://www.tiktok.com/@${encodeURIComponent(a.tiktok || '')}`)}
+            ${detail('Applying as', ans.role)}
+          </div>
+          ${groups}
+          <h5>Private note <small>only the crew sees this</small></h5>
+          <textarea class="amb-admin__note" data-note rows="2" maxlength="2000" placeholder="Anything worth remembering about this one.">${esc(a.note || '')}</textarea>
+          <h5>Message to send with the next update <small>optional</small></h5>
+          <textarea class="amb-admin__msg" data-msg rows="2" maxlength="1200" placeholder="A line in your own words. It goes in the email above our standard wording."></textarea>
+          <div class="amb-admin__acts">
+            ${AMB_NEXT.filter(([k]) => k !== a.status).map(([k, label]) =>
+              `<button type="button" class="btn btn--sm${k === 'declined' ? ' btn--ghost' : ''}" data-act="set" data-status="${k}">${esc(label)}</button>`).join('')}
+            <span style="flex:1"></span>
+            <button type="button" class="btn btn--ghost btn--sm" data-act="note">Save note</button>
+            <button type="button" class="btn btn--danger btn--sm" data-act="delete">Delete</button>
+          </div>
+        </div>` : ''}
+      </article>`;
+    };
+
+    const draw = () => {
+      const list = L.filter(a => !ambFilter || a.status === ambFilter);
+      $('#ambList').innerHTML = list.map(row).join('')
+        || `<div class="empty">${L.length ? 'Nothing in here.' : 'No applications yet. They land here the moment someone applies at /ambassadors/.'}</div>`;
+    };
+    draw();
+
+    $('#ambKinds').addEventListener('click', e => {
+      const b = e.target.closest('[data-k]'); if (!b) return;
+      ambKind = b.dataset.k; applications();
+    });
+    $('#ambTabs').addEventListener('click', e => {
+      const b = e.target.closest('[data-f]'); if (!b) return;
+      ambFilter = b.dataset.f; applications();
+    });
+
+    $('#ambList').addEventListener('click', async e => {
+      // Photos live in a private bucket; this fetches a link that works for a few minutes.
+      const shot = e.target.closest('[data-photo]');
+      if (shot) {
+        e.preventDefault();
+        const url = await CMS.applicationPhoto(shot.dataset.photo);
+        if (url) window.open(url, '_blank', 'noopener');
+        else toast('That photo could not be opened');
+        return;
+      }
+      const b = e.target.closest('[data-act]'); if (!b) return;
+      const card = b.closest('[data-id]');
+      const a = L.find(x => String(x.id) === card.dataset.id); if (!a) return;
+
+      if (b.dataset.act === 'toggle') { ambOpen = ambOpen === a.id ? null : a.id; applications(); return; }
+
+      const note = card.querySelector('[data-note]')?.value ?? null;
+      const message = card.querySelector('[data-msg]')?.value ?? '';
+
+      if (b.dataset.act === 'delete') {
+        if (!confirm(`Delete ${a.name}'s application (${a.ref})? This can't be undone.`)) return;
+        const ok = await withWrite('Enter your admin password to delete this application.', () => CMS.deleteApplication(a.id));
+        if (!ok) return;
+        ambList = all.filter(x => x !== a); ambOpen = null;
+        toast('Application deleted'); applications(); refreshLater(); return;
+      }
+
+      if (b.dataset.act === 'note') {
+        const ok = await withWrite('Enter your admin password to save this note.',
+          () => CMS.setApplicationStatus({ id: a.id, status: a.status, note, notify: false }));
+        if (!ok) return;
+        a.note = note; toast('Note saved'); return;
+      }
+
+      const status = b.dataset.status;
+      const [label] = AMB_STATUS[status];
+      const ok = await withWrite(`Enter your admin password to set this application to "${label}". ${status === 'new' ? '' : 'The applicant is emailed.'}`,
+        () => CMS.setApplicationStatus({ id: a.id, status, message, note }));
+      if (!ok) return;
+      a.status = status; a.note = note;
+      toast(`${a.name} → ${label}. They've been emailed`);
+      applications(); refreshLater();
+    });
+  }
+
   function reviews() {
     setTitle('Reviews');
     const R = DATA.reviews || [];

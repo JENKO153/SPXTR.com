@@ -212,6 +212,25 @@
         return body || { ok: true };
       },
 
+      // An application to ride or to model. Goes to the applications Edge Function, which saves
+      // it, emails the crew and sends the applicant their reference. The browser has no rights
+      // to the table at all.
+      async applyToJoin(app) {
+        let res, body;
+        try {
+          res = await fetch(`${cfg.supabaseUrl}/functions/v1/applications`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', apikey: cfg.supabaseKey, Authorization: `Bearer ${cfg.supabaseKey}` },
+            body: JSON.stringify({ ...app, website: '' }),
+          });
+          body = await res.json();
+        } catch {
+          throw new Error('Couldn\'t send your application. Check your connection and try again.');
+        }
+        if (!res.ok) throw new Error(body?.error || 'Your application couldn\'t be sent.');
+        return body;
+      },
+
       // Customer review from the product page or order page. Goes to the submit-review Edge Function,
       // which saves it as pending until an admin approves it.
       async submitReview(review) {
@@ -315,6 +334,37 @@
       async adminNames() {
         const { data, error } = await admin().rpc('admin_names');
         return error ? {} : (data || {});
+      },
+
+      // Applications, for the admin: the list, and moving one along (which emails the applicant).
+      // The status change runs through the Edge Function so the news goes out with it.
+      async applicationList() {
+        const { data, error } = await admin().rpc('application_list');
+        fail(error, 'Could not load the applications');   // PGRST202 means schema.sql needs re-running
+        return data || [];
+      },
+      async setApplicationStatus({ id, status, message = '', note = null, notify = true }) {
+        const { data: { session } } = await admin().auth.getSession();
+        const res = await fetch(`${cfg.supabaseUrl}/functions/v1/applications`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', apikey: cfg.supabaseKey, Authorization: `Bearer ${session?.access_token || cfg.supabaseKey}` },
+          body: JSON.stringify({ setStatus: { id, status, message, note, notify } }),
+        }).catch(() => null);
+        const body = await res?.json().catch(() => null);
+        if (!res?.ok) throw new Error(body?.error || 'Could not update that application.');
+        return body;
+      },
+      // A photo sent with an application. The bucket is private, so the admin gets a link that
+      // works for five minutes and nowhere else.
+      async applicationPhoto(path) {
+        const { data, error } = await admin().storage.from('applications').createSignedUrl(path, 300);
+        if (error) return '';
+        return data?.signedUrl || '';
+      },
+      async deleteApplication(id) {
+        const { error } = await admin().rpc('application_delete', { app_id: id });
+        fail(error, 'Could not delete that application');
+        return true;
       },
 
       // The launch list, for the admin: who's waiting, remove someone, and the "we're live" email.
@@ -586,6 +636,41 @@
         list.unshift({ email, at: new Date().toISOString(), notified_at: null });
         write('launch', list);
         return { ok: true };
+      },
+      async applyToJoin(app) {
+        await new Promise(r => setTimeout(r, 450));
+        const name = String(app.name || '').trim(), email = String(app.email || '').trim().toLowerCase();
+        if (name.length < 2) throw new Error('Please tell us your name.');
+        if (!/^[^@\s]+@[^@\s]+\.[^@\s]{2,}$/.test(email)) throw new Error('That email address doesn\'t look right.');
+        const kind = ['model', 'both'].includes(app.kind) ? app.kind : 'ambassador';
+        const list = read('applications', []);
+        if (list.some(x => x.kind === kind && x.email.toLowerCase() === email)) throw new Error('You\'ve already applied with that email.');
+        const ref = `SPX-${kind === 'model' ? 'M' : kind === 'both' ? 'B' : 'A'}-` + Math.random().toString(36).slice(2, 8).toUpperCase();
+        const { name: _n, email: _e, kind: _k, website: _w, photos: _p, answers = {}, ...rest } = app;
+        list.unshift({ id: 'a-' + Date.now().toString(36), kind, ref, name, email, status: 'new', note: null,
+                       ...rest, answers, at: new Date().toISOString(), updated_at: new Date().toISOString() });
+        write('applications', list);
+        return { ok: true, ref, emailed: false };
+      },
+      applicationList: async () => read('applications', []),
+      async setApplicationStatus({ id, status, note = null }) {
+        guard();
+        const list = read('applications', []);
+        const it = list.find(x => x.id === id); if (!it) throw new Error('Application not found');
+        it.status = status; it.updated_at = new Date().toISOString();
+        if (note !== null) it.note = note;
+        write('applications', list);
+        log('update', 'applications', { name: `${it.name} (${it.ref}) -> ${status}` });
+        return { ok: true, emailed: false, application: it };
+      },
+      applicationPhoto: async path => path,
+      async deleteApplication(id) {
+        guard();
+        const list = read('applications', []);
+        const it = list.find(x => x.id === id);
+        write('applications', list.filter(x => x.id !== id));
+        log('delete', 'applications', { name: `Deleted application ${it?.ref || ''}` });
+        return true;
       },
       launchList: async () => read('launch', []),
       async launchRemove(email) {

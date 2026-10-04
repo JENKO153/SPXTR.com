@@ -24,3 +24,8 @@ verify_jwt = false
 
 [functions.launch-list]
 verify_jwt = false
+
+# Applications to ride or to model. Anyone may apply, so there is no token to check; the function
+# validates, rate limits and spam-checks, and verifies admin actions against the database itself.
+[functions.applications]
+verify_jwt = false
