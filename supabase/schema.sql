@@ -800,7 +800,7 @@ begin
       'footer', coalesce(settings -> 'footer', '{}'::jsonb),
       'themes', coalesce(settings -> 'themes', '{}'::jsonb),
       'theme', coalesce(settings -> 'theme', '{}'::jsonb),
-      'instagram', coalesce(settings -> 'instagram', '"@spxtr"'::jsonb),
+      'instagram', coalesce(settings -> 'instagram', '"@spxtrcltv"'::jsonb),
       'instagramUrl', coalesce(settings -> 'instagramUrl', '""'::jsonb)));
   end if;
   return jsonb_build_object(

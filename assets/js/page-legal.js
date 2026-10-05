@@ -30,6 +30,12 @@
       el.textContent = value || el.dataset.legalGap;
       el.classList.toggle('is-filled', !!value);
     });
+    // Details the law does not insist on -- the phone number -- are wrapped in a [data-legal-if]
+    // so the whole phrase disappears when they are left empty, instead of leaving a red marker
+    // sitting in the policy forever. Email and a postal address are enough to be contactable.
+    document.querySelectorAll('[data-legal-if]').forEach(el => {
+      el.hidden = !String(legal[el.dataset.legalIf] || '').trim();
+    });
   }
 
   SEO.describe({ path: 'privacy/' });

@@ -232,12 +232,19 @@ const DEFAULT_SETTINGS = {
         ['consent', 'Please confirm', { type: 'consent', required: true, options: [
           'I am at least 18 years old.',
           'The information in this application is accurate.',
+          // The Privacy Act treats an answer about criminal history as sensitive information, which
+          // may only be collected with the person's consent. This line is that consent, and it names
+          // what is being collected rather than pointing at a document.
+          'I consent to SPXTR collecting and holding my answers here \u2014 including my date of birth, any photographs I send, and my answer about legal matters \u2014 to assess me for the collective.',
           'I understand that applying does not guarantee selection or paid work.',
           'I understand opportunities may be paid, gifted, commission-based, affiliate-based or unpaid, depending on the arrangement.',
           'I understand the terms of each opportunity are given to me before I choose whether to take part.',
           'I consent to SPXTR contacting me about my application and relevant opportunities.',
           'I agree to treat SPXTR team members and other applicants respectfully.',
-          'I understand I may withdraw my application by contacting SPXTR.'] }],
+          'I understand I may withdraw my application by contacting SPXTR.',
+          // [privacy policy] becomes a link when the form is drawn, so the policy is one tap away
+          // at the moment they are agreeing to it.
+          'I have read the SPXTR [privacy policy] and understand how my information is held, used and deleted.'] }],
         ['signature', 'Type your full name', { required: true, max: 80, half: true, hint: 'This stands as your signature on the answers above.' }],
       ]],
     ],
@@ -250,7 +257,7 @@ const DEFAULT_SETTINGS = {
     entity: '',            // the legal operator, e.g. "Specter Collective Pty Ltd"
     abn: '',               // ABN or ACN
     address: '',           // business postal address
-    phone: '',             // business phone
+    phone: '',             // business phone -- optional; empty means the policy omits it
     effective: '',         // the date this version took effect, e.g. "5 October 2026"
     region: '',            // where the database lives, from Supabase -> Settings -> General
     retention: '',         // how long applications are kept, e.g. "24 months"
@@ -265,7 +272,7 @@ const DEFAULT_SETTINGS = {
     text: "We're building it right now. Drop your email and you'll be first through the gate when it opens.",
     showEmail: true,
   },
-  instagram: '@spxtr',
+  instagram: '@spxtrcltv',
   instagramUrl: '',
   announcements: ['Season 04 out now', 'Free shipping over $100', 'Rider tested. Crash approved', '30-day returns, no questions', 'Join the crew for 10% off your first order'],
   marquee: ['Send it', 'Ghost it', 'No days off', 'Crash, get up', 'Ride again'],

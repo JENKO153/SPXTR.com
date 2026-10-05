@@ -45,7 +45,7 @@ const ANSWERS: Record<string, number> = {
 const REQUIRED = ['legal_name', 'dob', 'email', 'phone', 'location', 'work_rights', 'transport',
   'role', 'interest', 'fearless', 'fit', 'bring', 'background', 'disclosure', 'signature'];
 const MUST_AGREE = ['safety_ok', 'conduct_ok'];
-const CONSENT_COUNT = 8;
+const CONSENT_COUNT = 10;  // every box in settings.apply consent list must be ticked
 const PHOTO_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
 const MAX_PHOTO = 5 * 1024 * 1024;
 const MIN_AGE = 18;

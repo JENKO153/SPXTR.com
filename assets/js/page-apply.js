@@ -63,6 +63,11 @@
     const hint = o.hint ? `<em class="ap-field__hint">${esc(o.hint)}</em>` : '';
     const wide = o.half ? ' ap-field--half' : '';
 
+    // A consent line may carry [privacy policy] as a stand-in for a link to it. The text is
+    // escaped first, so only this one token can ever become markup.
+    const consentText = text => esc(text).replace('[privacy policy]',
+      '<a href="privacy/" target="_blank" rel="noopener">privacy policy</a>');
+
     const step = o._i ?? 0;
     if (o.type === 'radio' || o.type === 'checks' || o.type === 'consent') {
       const single = o.type === 'radio';
@@ -71,7 +76,7 @@
         <label class="${o.type === 'consent' ? 'ap-tick' : 'ap-chip'}">
           <input type="${single ? 'radio' : 'checkbox'}" name="${name}" value="${esc(opt)}"
                  ${single && o.required ? 'required' : ''} ${o.role ? 'data-role' : ''}>
-          <span>${esc(opt)}</span>
+          <span>${consentText(opt)}</span>
         </label>`).join('');
       return `<div class="ap-field ap-field--full rise" style="--step:${step}" data-name="${name}">${head}${hint}
         <div class="${cls}">${boxes}</div></div>`;

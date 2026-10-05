@@ -2382,7 +2382,8 @@ if (window.top !== window.self) { document.documentElement.innerHTML = ''; throw
             </div>
             <div class="field-row">
               <label>Postal address<input name="lgAddress" maxlength="200" value="${esc(legal.address)}" placeholder="PO Box 123, Brisbane QLD 4000"></label>
-              <label>Business phone<input name="lgPhone" maxlength="40" value="${esc(legal.phone)}" placeholder="+61 4XX XXX XXX"></label>
+              <label>Business phone <span class="hint">optional &mdash; leave it empty and the policy simply won't mention one</span>
+                <input name="lgPhone" maxlength="40" value="${esc(legal.phone)}" placeholder="+61 4XX XXX XXX"></label>
             </div>
             <label>Effective date <span class="hint">the day this version of the policy took effect — update it whenever you change the wording</span>
               <input name="lgEffective" maxlength="60" value="${esc(legal.effective)}" placeholder="5 October 2026"></label>
