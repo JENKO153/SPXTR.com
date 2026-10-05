@@ -9,6 +9,18 @@
   applyStoreAccent();
   applyTheme();
   wireBrandFallbacks();
+
+  // Write the business details into the gaps. A detail that has not been filled in yet keeps its
+  // red marker, so the page itself shows what is still outstanding.
+  const legal = SITE.legal || {};
+  document.querySelectorAll('[data-legal]').forEach(el => {
+    const value = String(legal[el.dataset.legal] || '').trim();
+    if (!value) return;
+    const plain = document.createElement('span');
+    plain.textContent = value;
+    el.replaceWith(plain);
+  });
+
   SEO.describe({ path: 'privacy/' });
   document.documentElement.classList.remove('is-loading');
 })();

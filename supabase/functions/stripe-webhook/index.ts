@@ -12,7 +12,7 @@
 import Stripe from 'npm:stripe@17';
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { env, json, serviceKey, siteUrl } from '../_shared/http.ts';
-import { abandonedCartEmail, confirmationEmail, emailConfigured, loadAccent, sendEmail, shopNotificationEmail } from '../_shared/email.ts';
+import { abandonedCartEmail, confirmationEmail, emailConfigured, loadAccent, optedOut, sendEmail, shopNotificationEmail, unsubLink } from '../_shared/email.ts';
 
 const stripe = new Stripe(env('STRIPE_SECRET_KEY'), { httpClient: Stripe.createFetchHttpClient() });
 const cryptoProvider = Stripe.createSubtleCryptoProvider();
@@ -48,6 +48,8 @@ Deno.serve(async req => {
         const s = event.data.object as Stripe.Checkout.Session;
         const to = s.customer_details?.email;
         if (!to || !emailConfigured()) break;
+        // A reminder is a marketing message, so anyone who has opted out is left alone.
+        if (await optedOut(db, to)) break;
         const full = await stripe.checkout.sessions.listLineItems(s.id, { limit: 10 });
         const items = full.data.map(li => ({
           name: li.description || 'Item',
@@ -58,12 +60,14 @@ Deno.serve(async req => {
         if (!items.length) break;
         try {
           await loadAccent(db);
+          const unsubUrl = await unsubLink(to);
           const m = abandonedCartEmail(siteUrl(), {
             name: s.customer_details?.name ?? '',
-            items, total: s.amount_total ?? 0, currency: s.currency ?? 'aud',
+            items, total: s.amount_total ?? 0, currency: s.currency ?? 'aud', unsubUrl,
           });
-          // One-to-one mail about something they did, so it carries no bulk headers.
-          await sendEmail(to, m.subject, m.html, m.text, undefined, { kind: 'order' });
+          // Marketing, not a receipt: it carries the one-click unsubscribe headers mail apps
+          // look for, as well as the link in the footer.
+          await sendEmail(to, m.subject, m.html, m.text, undefined, { kind: 'bulk', unsubUrl });
         } catch (err) {
           console.error('Abandoned cart email failed', err);
         }

@@ -33,3 +33,7 @@ verify_jwt = false
 # Called by the database on a schedule, not by a browser: guarded by CRON_SECRET instead.
 [functions.review-requests]
 verify_jwt = false
+
+# The unsubscribe link at the bottom of a marketing email: one click, no login.
+[functions.unsubscribe]
+verify_jwt = false

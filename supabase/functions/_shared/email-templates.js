@@ -524,7 +524,7 @@ export function crewWelcomeEmail({ site, instagram, name, role, code, percent, m
 // =====================================================================
 // 9. Left in the cart (Stripe tells us the checkout expired)
 // =====================================================================
-export function abandonedCartEmail({ site, accent, instagram, name, items = [], total, currency = 'aud' }) {
+export function abandonedCartEmail({ site, accent, instagram, name, items = [], total, currency = 'aud', unsubUrl }) {
   accent = readable(accent);
   const first = String(name || '').trim().split(/\s+/)[0] || '';
   const rows = items.slice(0, 4).map(i => `
@@ -549,15 +549,16 @@ export function abandonedCartEmail({ site, accent, instagram, name, items = [], 
       title: 'You left<br>something.',
       intro: `${first ? `${esc(first)}, you` : 'You'}'d picked this out and didn't finish. It's still here.`,
       body,
+      footerNote: unsubUrl ? `Don't want reminders like this? <a href="${unsubUrl}" style="color:${C.muted}">Stop them here</a>.` : '',
     }),
-    text: `You left something in your cart at SPXTR.\n\n${items.map(i => `${i.name}${i.size ? ` (${i.size})` : ''} × ${i.qty}`).join('\n')}\n\nPick up where you left off: ${site}/shop/`,
+    text: `You left something in your cart at SPXTR.\n\n${items.map(i => `${i.name}${i.size ? ` (${i.size})` : ''} × ${i.qty}`).join('\n')}\n\nPick up where you left off: ${site}/shop/${unsubUrl ? `\n\nStop these reminders: ${unsubUrl}` : ''}`,
   };
 }
 
 // =====================================================================
 // 10. "How did it hold up?" — sent a while after something shipped
 // =====================================================================
-export function reviewRequestEmail({ site, accent, instagram, order, items = [] }) {
+export function reviewRequestEmail({ site, accent, instagram, order, items = [], unsubUrl }) {
   accent = readable(accent);
   const first = String(order.name || '').trim().split(/\s+/)[0] || '';
   const link = `${site}/order/?o=${order.number}&k=${encodeURIComponent(order.access_key)}#items`;
@@ -583,7 +584,8 @@ export function reviewRequestEmail({ site, accent, instagram, order, items = [] 
       title: 'How did<br>it hold up?',
       intro: `${first ? `${esc(first)}, you` : 'You'} picked up ${esc(what)} a little while back.`,
       body,
+      footerNote: unsubUrl ? `Don't want to be asked again? <a href="${unsubUrl}" style="color:${C.muted}">Opt out here</a>.` : '',
     }),
-    text: `How's the kit holding up?\n\nLeave a review: ${link}`,
+    text: `How's the kit holding up?\n\nLeave a review: ${link}${unsubUrl ? `\n\nOpt out of these: ${unsubUrl}` : ''}`,
   };
 }

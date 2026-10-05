@@ -243,6 +243,21 @@ const DEFAULT_SETTINGS = {
     ],
   },
 
+  /* The business details the privacy policy has to state by law. Filled in Admin -> Homepage &
+     settings; the policy page writes them into the gaps. Anything left empty shows on the page as
+     a red "still to fill in" marker, so an unfinished policy can never quietly go live. */
+  legal: {
+    entity: '',            // the legal operator, e.g. "Specter Collective Pty Ltd"
+    abn: '',               // ABN or ACN
+    address: '',           // business postal address
+    phone: '',             // business phone
+    effective: '',         // the date this version took effect, e.g. "5 October 2026"
+    region: '',            // where the database lives, from Supabase -> Settings -> General
+    retention: '',         // how long applications are kept, e.g. "24 months"
+    analytics: '',         // what measures visits, or "Nothing" if none
+    emailTracking: '',     // whether email opens/clicks are recorded
+  },
+
   // The "coming soon" curtain (Admin -> Homepage & settings). The switch itself lives in the database.
   comingSoon: {
     eyebrow: 'SPXTR Collective',

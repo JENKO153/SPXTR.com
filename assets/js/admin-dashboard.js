@@ -2028,6 +2028,7 @@ if (window.top !== window.self) { document.documentElement.innerHTML = ''; throw
     setTitle('Homepage & settings');
     const s = clone(DATA.settings);
     const heroImg = s.hero.image ? [{ url: s.hero.image }] : [];
+    const legal = s.legal = { ...DEFAULT_SETTINGS.legal, ...(s.legal || {}) };
     const ev = s.event;
     const evImg = [withPhoto(ev)];
     const testedImgs = (s.tested.images || []).map(u => ({ ph: u ? { url: u } : null }));
@@ -2087,6 +2088,34 @@ if (window.top !== window.self) { document.documentElement.innerHTML = ''; throw
           <div class="section">
             <h3>Under the hero <small>Four short promises, one per line. Use {free} for the free-shipping amount</small></h3>
             <textarea name="heroBar" rows="4" maxlength="300">${esc((s.hero.bar || []).join('\n'))}</textarea>
+          </div>
+          <div class="section">
+            <h3>Business details <small>Shown in the privacy policy, which the law requires you to publish</small></h3>
+            <p class="hint" style="margin:0 0 14px">Anything left empty shows on
+              <a class="link" href="${ROOT}privacy/" target="_blank" rel="noopener">the privacy policy</a> as a red
+              "still to fill in" marker, so an unfinished policy can't quietly go live.</p>
+            <div class="field-row">
+              <label>Legal operator <span class="hint">The entity that trades as SPXTR</span>
+                <input name="lgEntity" maxlength="120" value="${esc(legal.entity)}" placeholder="Specter Collective Pty Ltd"></label>
+              <label>ABN or ACN<input name="lgAbn" maxlength="40" value="${esc(legal.abn)}" placeholder="12 345 678 901"></label>
+            </div>
+            <div class="field-row">
+              <label>Business postal address<input name="lgAddress" maxlength="200" value="${esc(legal.address)}" placeholder="PO Box 123, Suburb QLD 4000"></label>
+              <label>Business phone<input name="lgPhone" maxlength="40" value="${esc(legal.phone)}" placeholder="+61 ..."></label>
+            </div>
+            <div class="field-row">
+              <label>Effective date <span class="hint">When this version of the policy applies from</span>
+                <input name="lgEffective" maxlength="40" value="${esc(legal.effective)}" placeholder="5 October 2026"></label>
+              <label>Where the database lives <span class="hint">Supabase → Settings → General</span>
+                <input name="lgRegion" maxlength="80" value="${esc(legal.region)}" placeholder="Sydney, Australia (ap-southeast-2)"></label>
+            </div>
+            <div class="field-row">
+              <label>How long applications are kept<input name="lgRetention" maxlength="60" value="${esc(legal.retention)}" placeholder="24 months"></label>
+              <label>What measures visits <span class="hint">Or "Nothing" if analytics is off</span>
+                <input name="lgAnalytics" maxlength="80" value="${esc(legal.analytics)}" placeholder="Nothing"></label>
+            </div>
+            <label>Email open and click tracking <span class="hint">Check this in Resend; say plainly whether it is on</span>
+              <input name="lgEmailTracking" maxlength="160" value="${esc(legal.emailTracking)}" placeholder="Delivery is recorded; opens and clicks are not tracked."></label>
           </div>
           <div class="section">
             <h3>Scrolling ticker <small>The moving strip under the hero, one word or phrase per line</small></h3>
@@ -2299,6 +2328,12 @@ if (window.top !== window.self) { document.documentElement.innerHTML = ''; throw
       s.freeShippingOver = Math.max(0, Number(f.freeShippingOver.value) || 0);
       s.instagram = f.instagram.value.trim();
       Object.assign(s.comingSoon, { eyebrow: f.csEyebrow.value.trim(), title: f.csTitle.value.trim(), text: f.csText.value.trim(), showEmail: f.csEmail.checked });
+      Object.assign(legal, {
+        entity: f.lgEntity.value.trim(), abn: f.lgAbn.value.trim(), address: f.lgAddress.value.trim(),
+        phone: f.lgPhone.value.trim(), effective: f.lgEffective.value.trim(), region: f.lgRegion.value.trim(),
+        retention: f.lgRetention.value.trim(), analytics: f.lgAnalytics.value.trim(),
+        emailTracking: f.lgEmailTracking.value.trim(),
+      });
       Object.assign(s.event, { show: f.evShow.checked, kind: f.evKind.value === 'drop' ? 'drop' : 'event', name: f.evName.value.trim(), round: f.evRound.value.trim(), place: f.evPlace.value.trim(), date: f.evDate.value, blurb: f.evBlurb.value.trim() });
     };
     form.addEventListener('input', e => { if (e.target.closest('.items')) return; read(); markDirty(); });

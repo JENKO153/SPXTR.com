@@ -91,13 +91,43 @@ export const applicationStatusEmail = (site: string, o: { kind: string; ref: str
 export const crewWelcomeEmail = (site: string, o: { name: string; role: string; code?: string; percent?: number; message?: string }) =>
   T.crewWelcomeEmail({ site, instagram: brand.instagram, ...o });
 
-export const abandonedCartEmail = (site: string, o: { name?: string; items: unknown[]; total?: number; currency?: string }) =>
+export const abandonedCartEmail = (site: string, o: { name?: string; items: unknown[]; total?: number; currency?: string; unsubUrl?: string }) =>
   T.abandonedCartEmail({ site, accent: brand.accent, instagram: brand.instagram, ...o });
 
-export const reviewRequestEmail = (site: string, order: Record<string, unknown>, items: unknown[]) =>
-  T.reviewRequestEmail({ site, accent: brand.accent, instagram: brand.instagram, order, items });
+export const reviewRequestEmail = (site: string, order: Record<string, unknown>, items: unknown[], unsubUrl?: string) =>
+  T.reviewRequestEmail({ site, accent: brand.accent, instagram: brand.instagram, order, items, unsubUrl });
 
 export const launchWelcomeEmail = (site: string, unsubUrl: string) =>
   T.launchWelcomeEmail({ site, unsubUrl, accent: brand.accent, instagram: brand.instagram });
 export const launchLiveEmail = (site: string, unsubUrl: string, headline?: string, message?: string) =>
   T.launchLiveEmail({ site, unsubUrl, headline, message, accent: brand.accent, instagram: brand.instagram });
+
+/* ---------------- "do not email me" ----------------
+ * The launch list has its own unsubscribe token. These two messages -- the cart reminder and the
+ * review invitation -- go to people who never joined a list, so the link has to identify an
+ * address without us keeping a list of everyone who might one day click it.
+ *
+ * The answer is a signature rather than a stored token: the link carries the address and a short
+ * fingerprint of it made with a server-side key. Anyone can read the address in their own link
+ * (it is their own address), but nobody can forge a link for someone else's, and we store nothing
+ * until somebody actually unsubscribes.
+ */
+const unsubKey = () => Deno.env.get('UNSUB_SECRET') || Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || 'spxtr';
+
+export async function unsubSignature(email: string) {
+  const key = await crypto.subtle.importKey(
+    'raw', new TextEncoder().encode(unsubKey()), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+  const mac = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(email.trim().toLowerCase()));
+  return [...new Uint8Array(mac)].map(b => b.toString(16).padStart(2, '0')).join('').slice(0, 32);
+}
+
+export async function unsubLink(email: string) {
+  const sig = await unsubSignature(email);
+  return `${Deno.env.get('SUPABASE_URL')}/functions/v1/unsubscribe?e=${encodeURIComponent(email)}&t=${sig}`;
+}
+
+// Nothing may be sent to an address that has opted out. Checked before every one of these.
+export async function optedOut(db: { from: (t: string) => any }, email: string) {
+  const { data } = await db.from('email_optouts').select('email').eq('email', email.trim().toLowerCase()).maybeSingle();
+  return !!data;
+}

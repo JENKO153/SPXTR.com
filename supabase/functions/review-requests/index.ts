@@ -15,7 +15,7 @@
 
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { env, json, serviceKey, siteUrl } from '../_shared/http.ts';
-import { emailConfigured, loadAccent, reviewRequestEmail, sendEmail } from '../_shared/email.ts';
+import { emailConfigured, loadAccent, optedOut, reviewRequestEmail, sendEmail, unsubLink } from '../_shared/email.ts';
 
 const db = createClient(env('SUPABASE_URL'), serviceKey(), { auth: { persistSession: false } });
 
@@ -59,11 +59,19 @@ Deno.serve(async req => {
 
   await loadAccent(db);
   let sent = 0; const failed: number[] = [];
+  let skipped = 0;
   for (const o of due) {
     try {
-      const m = reviewRequestEmail(siteUrl(), o, o.order_items ?? []);
-      // One-to-one mail about something they bought, so it carries no bulk headers.
-      await sendEmail(o.email, m.subject, m.html, m.text, undefined, { kind: 'order' });
+      // Asking for a review is a marketing message, so anyone who has opted out is left alone --
+      // and stamped, so they are not reconsidered every night.
+      if (await optedOut(db, o.email)) {
+        await db.from('orders').update({ review_asked_at: new Date().toISOString() }).eq('id', o.id);
+        skipped++;
+        continue;
+      }
+      const unsubUrl = await unsubLink(o.email);
+      const m = reviewRequestEmail(siteUrl(), o, o.order_items ?? [], unsubUrl);
+      await sendEmail(o.email, m.subject, m.html, m.text, undefined, { kind: 'bulk', unsubUrl });
       await db.from('orders').update({ review_asked_at: new Date().toISOString() }).eq('id', o.id);
       sent++;
     } catch (err) {
@@ -74,5 +82,5 @@ Deno.serve(async req => {
     }
     await new Promise(r => setTimeout(r, 120));          // stay under Resend's rate limit
   }
-  return json({ ok: true, sent, failed: failed.length, failedOrders: failed });
+  return json({ ok: true, sent, skipped, failed: failed.length, failedOrders: failed });
 });

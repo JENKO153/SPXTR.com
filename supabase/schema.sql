@@ -1007,6 +1007,35 @@ create policy applications_admin_delete on storage.objects for delete to authent
   using (bucket_id = 'applications' and public.can_write());
 
 -- ---------------------------------------------------------------------
+-- "Do not email me": the suppression list
+-- The launch list has its own unsubscribe. This covers the two messages that go to people who
+-- never joined a list -- the reminder about a cart they left behind, and the invitation to review
+-- something they bought. Both are commercial electronic messages under the Spam Act, so both must
+-- carry a working unsubscribe, and nothing may be sent to an address once it is in here.
+--
+-- A row only exists once somebody actually opts out, which means we store nothing extra about
+-- the people who never do.
+-- ---------------------------------------------------------------------
+create table if not exists public.email_optouts (
+  email text primary key check (char_length(email) <= 200),
+  at timestamptz not null default now(),
+  source text check (source is null or char_length(source) <= 40)
+);
+alter table public.email_optouts enable row level security;
+revoke all on public.email_optouts from anon, authenticated;
+
+-- Admins can see who has opted out, so "why didn't they get it?" has an answer.
+create or replace function public.email_optout_list() returns jsonb
+language sql stable security definer set search_path = public as $$
+  select case when public.admin_ok() then coalesce((
+    select jsonb_agg(jsonb_build_object('email', email, 'at', at, 'source', source) order by at desc)
+    from (select email, at, source from public.email_optouts order by at desc limit 2000) x), '[]'::jsonb)
+  else '[]'::jsonb end;
+$$;
+revoke all on function public.email_optout_list() from public, anon;
+grant execute on function public.email_optout_list() to authenticated;
+
+-- ---------------------------------------------------------------------
 -- Image storage: public to view, only a password-confirmed admin can upload/delete.
 -- Only jpg/png/webp/avif up to 8MB (no SVG — it can carry scripts).
 -- ---------------------------------------------------------------------
