@@ -312,6 +312,7 @@ function showComingSoon() {
       <span class="soon__amb-note">${esc(ways[0].ctaNote || '')}</span>` : ''}
       ${badKey ? `<p class="soon__bad">That preview link didn't work. It may have been cut short when it was copied, or replaced with a new one. Ask for a fresh link from Admin → Homepage &amp; settings.</p>` : ''}
       ${ig ? `<a class="link-arrow" href="${esc(ig)}" target="_blank" rel="noopener noreferrer">${esc(SITE.instagram || 'Instagram')} ${ICON.arrow}</a>` : ''}
+      <a class="soon__privacy" href="privacy/">Privacy policy</a>
       <a class="soon__by" href="${esc(STORE.builderUrl)}" target="_blank" rel="noopener noreferrer"><span>Built by</span>
         <img src="${esc(STORE.brand.builder)}" alt="Seventh Boar Development" loading="lazy"></a>
     </main>`;
@@ -454,7 +455,7 @@ function renderChrome(active = '') {
             <p style="max-width:380px;margin:0">${esc(SITE.footer.blurb)}</p>
           </div>
           <div><h5>// Shop</h5><ul><li><a href="shop/?filter=new">New</a></li>${COLLECTIONS.map(c => `<li><a href="shop/?page=${encodeURIComponent(c.slug)}">${esc(c.name)}</a></li>`).join('')}</ul></div>
-          <div><h5>// Support</h5><ul><li><a href="#">Shipping</a></li><li><a href="#">Returns</a></li><li><a href="#">Size guide</a></li><li><a href="#">Warranty</a></li><li><a href="mailto:${esc(SITE.footer.email || STORE.email)}">Contact</a></li></ul></div>
+          <div><h5>// Support</h5><ul><li><a href="#">Shipping</a></li><li><a href="#">Returns</a></li><li><a href="#">Size guide</a></li><li><a href="#">Warranty</a></li><li><a href="privacy/">Privacy</a></li><li><a href="mailto:${esc(SITE.footer?.email || "admin@spectercltv.com")}">Contact</a></li></ul></div>
           <div><h5>// The crew</h5><ul><li><a href="./#team">Team riders</a></li><li><a href="./#event">Events</a></li><li><a href="${esc(instagramLink() || '#')}"${instagramLink() ? ' target="_blank" rel="noopener noreferrer"' : ''}>Instagram</a></li><li><a href="#">YouTube</a></li></ul></div>
         </div>
         <div class="footer__bottom">

@@ -181,6 +181,13 @@
             <span><b>Status</b><em id="ap-plate-state">Open</em></span>
           </header>
           ${parts}
+          <!-- The collection notice, beside the confirmations rather than three clicks away. -->
+          <p class="ap-privacy">
+            What you send here — including your date of birth, your answers and any photographs — is held
+            securely, read only by the crew assessing applications, and never sold or published without a
+            separate agreement. You can ask for a copy or have it deleted at any time.
+            <a href="privacy/" target="_blank" rel="noopener">Read the privacy policy</a>.
+          </p>
           <input type="text" name="website" tabindex="-1" autocomplete="off" aria-hidden="true" class="ap-hp">
           <p class="ap-error" id="apply-error" hidden></p>
           <div class="ap-send">
