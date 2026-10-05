@@ -162,7 +162,7 @@ if (window.top !== window.self) { document.documentElement.innerHTML = ''; throw
     lastHash = location.hash;
     view.onclick = null; // views that need a delegated click handler set their own
     const [name, id] = (location.hash.slice(1) || 'overview').split('/');
-    const routes = { overview, orders, order: () => orderDetail(id), products, product: () => productEditor(id), pages, page: () => pageEditor(id), content: contentEditor, settings: settingsEditor, customise: customiseEditor, reviews, applications, security };
+    const routes = { overview, orders, order: () => orderDetail(id), products, product: () => productEditor(id), pages, page: () => pageEditor(id), content: contentEditor, settings: settingsEditor, customise: customiseEditor, reviews, applications, legal: legalEditor, security };
     (routes[name] || overview)();
     const navKey = { order: 'orders', product: 'products', page: 'pages' }[name] || name;
     $$('#nav a[data-route]').forEach(a => a.classList.toggle('active', a.dataset.route === navKey));
@@ -2028,7 +2028,6 @@ if (window.top !== window.self) { document.documentElement.innerHTML = ''; throw
     setTitle('Homepage & settings');
     const s = clone(DATA.settings);
     const heroImg = s.hero.image ? [{ url: s.hero.image }] : [];
-    const legal = s.legal = { ...DEFAULT_SETTINGS.legal, ...(s.legal || {}) };
     const ev = s.event;
     const evImg = [withPhoto(ev)];
     const testedImgs = (s.tested.images || []).map(u => ({ ph: u ? { url: u } : null }));
@@ -2088,34 +2087,6 @@ if (window.top !== window.self) { document.documentElement.innerHTML = ''; throw
           <div class="section">
             <h3>Under the hero <small>Four short promises, one per line. Use {free} for the free-shipping amount</small></h3>
             <textarea name="heroBar" rows="4" maxlength="300">${esc((s.hero.bar || []).join('\n'))}</textarea>
-          </div>
-          <div class="section">
-            <h3>Business details <small>Shown in the privacy policy, which the law requires you to publish</small></h3>
-            <p class="hint" style="margin:0 0 14px">Anything left empty shows on
-              <a class="link" href="${ROOT}privacy/" target="_blank" rel="noopener">the privacy policy</a> as a red
-              "still to fill in" marker, so an unfinished policy can't quietly go live.</p>
-            <div class="field-row">
-              <label>Legal operator <span class="hint">The entity that trades as SPXTR</span>
-                <input name="lgEntity" maxlength="120" value="${esc(legal.entity)}" placeholder="Specter Collective Pty Ltd"></label>
-              <label>ABN or ACN<input name="lgAbn" maxlength="40" value="${esc(legal.abn)}" placeholder="12 345 678 901"></label>
-            </div>
-            <div class="field-row">
-              <label>Business postal address<input name="lgAddress" maxlength="200" value="${esc(legal.address)}" placeholder="PO Box 123, Suburb QLD 4000"></label>
-              <label>Business phone<input name="lgPhone" maxlength="40" value="${esc(legal.phone)}" placeholder="+61 ..."></label>
-            </div>
-            <div class="field-row">
-              <label>Effective date <span class="hint">When this version of the policy applies from</span>
-                <input name="lgEffective" maxlength="40" value="${esc(legal.effective)}" placeholder="5 October 2026"></label>
-              <label>Where the database lives <span class="hint">Supabase → Settings → General</span>
-                <input name="lgRegion" maxlength="80" value="${esc(legal.region)}" placeholder="Sydney, Australia (ap-southeast-2)"></label>
-            </div>
-            <div class="field-row">
-              <label>How long applications are kept<input name="lgRetention" maxlength="60" value="${esc(legal.retention)}" placeholder="24 months"></label>
-              <label>What measures visits <span class="hint">Or "Nothing" if analytics is off</span>
-                <input name="lgAnalytics" maxlength="80" value="${esc(legal.analytics)}" placeholder="Nothing"></label>
-            </div>
-            <label>Email open and click tracking <span class="hint">Check this in Resend; say plainly whether it is on</span>
-              <input name="lgEmailTracking" maxlength="160" value="${esc(legal.emailTracking)}" placeholder="Delivery is recorded; opens and clicks are not tracked."></label>
           </div>
           <div class="section">
             <h3>Scrolling ticker <small>The moving strip under the hero, one word or phrase per line</small></h3>
@@ -2328,12 +2299,6 @@ if (window.top !== window.self) { document.documentElement.innerHTML = ''; throw
       s.freeShippingOver = Math.max(0, Number(f.freeShippingOver.value) || 0);
       s.instagram = f.instagram.value.trim();
       Object.assign(s.comingSoon, { eyebrow: f.csEyebrow.value.trim(), title: f.csTitle.value.trim(), text: f.csText.value.trim(), showEmail: f.csEmail.checked });
-      Object.assign(legal, {
-        entity: f.lgEntity.value.trim(), abn: f.lgAbn.value.trim(), address: f.lgAddress.value.trim(),
-        phone: f.lgPhone.value.trim(), effective: f.lgEffective.value.trim(), region: f.lgRegion.value.trim(),
-        retention: f.lgRetention.value.trim(), analytics: f.lgAnalytics.value.trim(),
-        emailTracking: f.lgEmailTracking.value.trim(),
-      });
       Object.assign(s.event, { show: f.evShow.checked, kind: f.evKind.value === 'drop' ? 'drop' : 'event', name: f.evName.value.trim(), round: f.evRound.value.trim(), place: f.evPlace.value.trim(), date: f.evDate.value, blurb: f.evBlurb.value.trim() });
     };
     form.addEventListener('input', e => { if (e.target.closest('.items')) return; read(); markDirty(); });
@@ -2389,6 +2354,91 @@ if (window.top !== window.self) { document.documentElement.innerHTML = ''; throw
       toast('Homepage updated');
       settingsEditor();
       refreshLater();
+    });
+  }
+
+  /* =====================================================================
+     LEGAL  (the business details the published policy has to state by law)
+
+     Its own screen on purpose. The policy page reads these out of settings.legal and leaves a
+     loud red marker wherever one is still empty, so the preview beside the form shows exactly
+     what an unfinished policy looks like to the public.
+     ===================================================================== */
+  function legalEditor() {
+    setTitle('Legal');
+    const s = clone(DATA.settings);
+    const legal = s.legal = { ...DEFAULT_SETTINGS.legal, ...(s.legal || {}) };
+
+    view.innerHTML = `
+      <div class="editor">
+        <form class="editor__form" id="lform" novalidate>
+          <div class="section">
+            <h3>Business details <small>Written into the privacy policy, which the law requires you to publish</small></h3>
+            <p class="hint" style="margin:0 0 12px">Anything left empty shows on the live policy page as a red "still to fill in" marker, so an unfinished policy can never quietly go out. Watch the preview as you type.</p>
+            <div class="field-row">
+              <label>Legal entity <span class="hint">the company or person who operates SPXTR</span>
+                <input name="lgEntity" maxlength="120" value="${esc(legal.entity)}" placeholder="Specter Collective Pty Ltd"></label>
+              <label>ABN or ACN<input name="lgAbn" maxlength="40" value="${esc(legal.abn)}" placeholder="12 345 678 901"></label>
+            </div>
+            <div class="field-row">
+              <label>Postal address<input name="lgAddress" maxlength="200" value="${esc(legal.address)}" placeholder="PO Box 123, Brisbane QLD 4000"></label>
+              <label>Business phone<input name="lgPhone" maxlength="40" value="${esc(legal.phone)}" placeholder="+61 4XX XXX XXX"></label>
+            </div>
+            <label>Effective date <span class="hint">the day this version of the policy took effect — update it whenever you change the wording</span>
+              <input name="lgEffective" maxlength="60" value="${esc(legal.effective)}" placeholder="5 October 2026"></label>
+          </div>
+          <div class="section">
+            <h3>How you handle data <small>Three statements the policy makes on your behalf, so they have to be true</small></h3>
+            <label>Where the database lives <span class="hint">Supabase &rarr; Settings &rarr; General shows your project's region</span>
+              <input name="lgRegion" maxlength="80" value="${esc(legal.region)}" placeholder="Sydney, Australia (ap-southeast-2)"></label>
+            <label>How long applications are kept <span class="hint">including the photographs people send in</span>
+              <input name="lgRetention" maxlength="80" value="${esc(legal.retention)}" placeholder="24 months"></label>
+            <div class="field-row">
+              <label>What measures visits<input name="lgAnalytics" maxlength="120" value="${esc(legal.analytics)}" placeholder="Our own counter, no cookies"></label>
+              <label>Email opens and clicks<input name="lgEmailTracking" maxlength="120" value="${esc(legal.emailTracking)}" placeholder="Not recorded"></label>
+            </div>
+            <p class="hint" style="margin:8px 0 0">Open and click tracking is switched off in Resend, so "Not recorded" is the honest answer unless you turn it on there.</p>
+          </div>
+          <div class="section">
+            <h3>The published policy</h3>
+            <p class="hint" style="margin:0 0 12px">The wording itself is part of the site, not something edited here — it has to match what the site actually does. Ask for a change if your circumstances change.</p>
+            <a class="btn btn--ghost btn--sm" href="${esc(ROOT)}privacy/" target="_blank" rel="noopener">Open the live policy page</a>
+          </div>
+          <div class="savebar">
+            <span class="dirty" id="dirtyFlag" hidden>Unsaved changes</span>
+            <span class="spacer"></span>
+            <button type="submit" class="btn">Save changes</button>
+          </div>
+        </form>
+        ${previewPanel(ROOT + 'privacy/?preview=1', 'spxtr.com/privacy/')}
+      </div>`;
+
+    const form = $('#lform'), f = form.elements;
+    const send = wirePreview(() => ({ settings: s }));
+    const markDirty = () => { dirty = true; $('#dirtyFlag').hidden = false; send(); };
+    const read = () => {
+      Object.assign(legal, {
+        entity: f.lgEntity.value.trim(), abn: f.lgAbn.value.trim(), address: f.lgAddress.value.trim(),
+        phone: f.lgPhone.value.trim(), effective: f.lgEffective.value.trim(), region: f.lgRegion.value.trim(),
+        retention: f.lgRetention.value.trim(), analytics: f.lgAnalytics.value.trim(),
+        emailTracking: f.lgEmailTracking.value.trim(),
+      });
+    };
+    form.addEventListener('input', () => { read(); markDirty(); });
+    read();
+
+    form.addEventListener('submit', async e => {
+      e.preventDefault();
+      read();
+      const ok = await withWrite('Enter your admin password to update the legal details.', async () => {
+        progress('Saving…');
+        await CMS.saveSettings(s);
+        DATA.settings = CMS.mergeSettings(s);
+      });
+      if (!ok) return;
+      dirty = false;
+      toast('Legal details updated');
+      legalEditor();
     });
   }
 

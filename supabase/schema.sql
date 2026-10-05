@@ -788,12 +788,16 @@ begin
   if shut and not adm and not (p_key is not null and btrim(p_key) <> ''
       and exists (select 1 from public.security_settings s where s.id = 1
                   and lower(replace(btrim(s.preview_key), '-', '')) = lower(replace(btrim(p_key), '-', '')))) then
-    -- A closed store gives nothing away: only what the curtain itself needs, plus the wording
-    -- for /ambassadors/ and /models/, which stay open while the rest of the site is shut and
-    -- would otherwise fall back to the built-in defaults instead of what the admin has set.
+    -- A closed store gives nothing away: only what the curtain itself needs, plus the settings
+    -- belonging to the pages that stay open while the rest of the site is shut -- the application
+    -- pages and the policy pages. Anything left out of this list falls back to the built-in
+    -- defaults on those pages instead of what the admin has set, which looks exactly like a save
+    -- that did not work. ADD TO THIS LIST when a new page is readable while the store is closed.
     return jsonb_build_object('coming_soon', true, 'settings', jsonb_build_object(
       'comingSoon', coalesce(settings -> 'comingSoon', '{}'::jsonb),
       'apply', coalesce(settings -> 'apply', '{}'::jsonb),
+      'legal', coalesce(settings -> 'legal', '{}'::jsonb),
+      'footer', coalesce(settings -> 'footer', '{}'::jsonb),
       'themes', coalesce(settings -> 'themes', '{}'::jsonb),
       'theme', coalesce(settings -> 'theme', '{}'::jsonb),
       'instagram', coalesce(settings -> 'instagram', '"@spxtr"'::jsonb),

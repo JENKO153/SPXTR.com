@@ -1384,6 +1384,8 @@ body.legal { background: var(--bg); min-height: 100vh; display: flex; flex-direc
   background: color-mix(in srgb, var(--red) 22%, transparent); color: var(--bone);
   padding: 2px 7px; font: 500 13px var(--mono); border: 1px dashed var(--red);
 }
+/* Filled in: reads as ordinary prose again, with no trace of the gap it used to be. */
+.legal mark.is-filled { background: none; border: 0; padding: 0; color: inherit; font: inherit; }
 @media (max-width: 680px) { .legal__toc ol { columns: 1; } }
 
 /* =========================================================

@@ -243,9 +243,9 @@ const DEFAULT_SETTINGS = {
     ],
   },
 
-  /* The business details the privacy policy has to state by law. Filled in Admin -> Homepage &
-     settings; the policy page writes them into the gaps. Anything left empty shows on the page as
-     a red "still to fill in" marker, so an unfinished policy can never quietly go live. */
+  /* The business details the privacy policy has to state by law. Filled in Admin -> Legal; the
+     policy page writes them into the gaps. Anything left empty shows on the page as a red
+     "still to fill in" marker, so an unfinished policy can never quietly go live. */
   legal: {
     entity: '',            // the legal operator, e.g. "Specter Collective Pty Ltd"
     abn: '',               // ABN or ACN
