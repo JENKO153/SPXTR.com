@@ -21,6 +21,13 @@ window.SPX_CONFIG = Object.freeze({
   // testMode only changes which Stripe dashboard the admin's "View in Stripe" links open.
   stripe: { enabled: true, testMode: true },
 
+  /* Visitor numbers. Leave provider empty and nothing is loaded or measured.
+     'plausible'  site = your domain, e.g. 'spxtr.com'
+     'umami'      site = the website id from your Umami dashboard
+     host         only if you self-host; otherwise leave it out.
+     Both are cookie-free and anonymous, which is why the site needs no cookie banner. */
+  analytics: { provider: '', site: '', host: '' },
+
   // Optional bot protection on the admin login (recommended once live).
   // Turn on Captcha in Supabase: Authentication -> Attack Protection, choose Turnstile,
   // paste Cloudflare's SECRET key there, and put the SITE key here. See SECURITY.md.

@@ -38,6 +38,26 @@ function render(p) {
   const first = pages[0];
   document.title = `${p.name || 'Product'} — ${STORE.name}`;
 
+  // What Google and a shared link show for this product: its own photograph, its price, whether
+  // it is in stock, and its stars if it has reviews.
+  const stars = reviewSummary(approvedReviews(p.id));
+  SEO.describe({
+    title: `${p.name} — ${STORE.name}`,
+    description: p.blurb || p.description || `${p.name}. ${p.category || ''} built to take a hit. Rider tested, crash approved.`,
+    image: safeUrl(main),
+    path: `product/?p=${encodeURIComponent(p.slug || p.id)}`,
+    type: 'product',
+  });
+  SEO.product({
+    name: p.name, description: p.blurb || p.description, images: images.map(safeUrl), sku: p.sku,
+    price: p.price, currency: 'AUD',            // checkout charges in AUD
+    inStock: p.stock !== 0,
+    url: `product/?p=${encodeURIComponent(p.slug || p.id)}`,
+    rating: stars?.avg, reviews: stars?.count || 0,
+  });
+  SEO.breadcrumbs([['Home', ''], ['Shop', 'shop/'],
+    ...(first ? [[first.name, `shop/?page=${first.slug}`]] : []), [p.name, `product/?p=${p.slug || p.id}`]]);
+
   $('#crumbs').innerHTML = `<a href="./">Home</a> // ${first ? `<a href="shop/?page=${encodeURIComponent(first.slug)}">${esc(first.name)}</a> // ` : ''}${esc(p.name)}`;
   $('#pdp').innerHTML = `
     <div class="pdp__gallery">

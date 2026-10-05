@@ -325,6 +325,7 @@ function showComingSoon() {
     btn.disabled = true; btn.textContent = 'Adding…';
     try {
       const r = await CMS.joinLaunchList(email);
+      spxTrack?.('Launch list signup');
       const done = document.createElement('div');
       done.className = 'soon__thanks';
       done.textContent = r?.already ? "You're already on the list. See you at launch." : "You're on the list. Check your inbox.";
@@ -574,6 +575,7 @@ async function addToCart(id, size, qty = 1, { open = false } = {}) {
   cartStore.set(cart);
   renderCart();
   toast(`${p.name}${size === 'One size' ? '' : ` (${size})`} added to your cart`);
+  spxTrack?.('Add to cart', { product: p.name, size });
   bumpBag();
   if (open) openCart();
 }
@@ -639,6 +641,7 @@ async function checkout(btn) {
   const label = btn.textContent;
   btn.disabled = true; btn.textContent = 'Opening secure checkout…';
   try {
+    spxTrack?.('Checkout started', { items: String(lines.reduce((n, l) => n + l.qty, 0)) });
     location.href = await CMS.startCheckout(lines, regionStore.get());
   } catch (err) {
     toast(err.message);

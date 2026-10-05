@@ -12,7 +12,7 @@
 import Stripe from 'npm:stripe@17';
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { env, json, serviceKey, siteUrl } from '../_shared/http.ts';
-import { confirmationEmail, emailConfigured, loadAccent, sendEmail, shopNotificationEmail } from '../_shared/email.ts';
+import { abandonedCartEmail, confirmationEmail, emailConfigured, loadAccent, sendEmail, shopNotificationEmail } from '../_shared/email.ts';
 
 const stripe = new Stripe(env('STRIPE_SECRET_KEY'), { httpClient: Stripe.createFetchHttpClient() });
 const cryptoProvider = Stripe.createSubtleCryptoProvider();
@@ -39,6 +39,34 @@ Deno.serve(async req => {
         // Most payments are 'paid' immediately. Slower methods finish later and send
         // async_payment_succeeded, which lands back here.
         if (s.payment_status === 'paid') await recordOrder(s.id);
+        break;
+      }
+      // Stripe expires a checkout that was never finished (24 hours by default) and tells us
+      // here. If they got as far as giving an address we can write to them once, with what they
+      // had picked out. Nothing is stored: the only record is Stripe's own session.
+      case 'checkout.session.expired': {
+        const s = event.data.object as Stripe.Checkout.Session;
+        const to = s.customer_details?.email;
+        if (!to || !emailConfigured()) break;
+        const full = await stripe.checkout.sessions.listLineItems(s.id, { limit: 10 });
+        const items = full.data.map(li => ({
+          name: li.description || 'Item',
+          size: (li.price?.metadata?.size as string) || '',
+          qty: li.quantity || 1,
+          amount: li.amount_total ?? 0,
+        }));
+        if (!items.length) break;
+        try {
+          await loadAccent(db);
+          const m = abandonedCartEmail(siteUrl(), {
+            name: s.customer_details?.name ?? '',
+            items, total: s.amount_total ?? 0, currency: s.currency ?? 'aud',
+          });
+          // One-to-one mail about something they did, so it carries no bulk headers.
+          await sendEmail(to, m.subject, m.html, m.text, undefined, { kind: 'order' });
+        } catch (err) {
+          console.error('Abandoned cart email failed', err);
+        }
         break;
       }
       case 'charge.refunded': {

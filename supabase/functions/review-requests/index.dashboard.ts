@@ -1,3 +1,61 @@
+// GENERATED — do not edit. Built from supabase/functions/review-requests/ and _shared/ by
+// tools/bundle-function.py, for pasting into the Supabase dashboard function editor.
+// The files in the repo are the source of truth.
+import { createClient } from 'npm:@supabase/supabase-js@2';
+
+// ---------- http.ts ----------
+// Shared helpers for the SPXTR Edge Functions.
+
+// Only the shop's own site may call these from a browser. SITE_URL is the live address;
+// ALLOWED_ORIGINS can add more, comma separated (e.g. http://localhost:8080 while testing).
+// Browsers send only the origin (scheme + host), never a path, so compare origins: a SITE_URL like
+// https://jenko153.github.io/SPXTR.com still allows https://jenko153.github.io.
+const toOrigin = (u: string) => { try { return new URL(u.trim()).origin; } catch { return ''; } };
+const allowed = [Deno.env.get('SITE_URL') ?? '', ...(Deno.env.get('ALLOWED_ORIGINS') ?? '').split(',')]
+  .map(toOrigin)
+  .filter(Boolean);
+
+// Where to send shoppers back to after Stripe: the folder the shop page was in (it may be a
+// sub-folder, e.g. on GitHub Pages), but only on an allowed origin. Falls back to SITE_URL.
+function returnBase(_req: Request, claimed: unknown): string {
+  try {
+    const u = new URL(String(claimed ?? ''));
+    if (allowed.includes(u.origin) && (u.protocol === 'https:' || u.hostname === 'localhost')) {
+      return (u.origin + u.pathname).replace(/\/[^/]*$/, '');
+    }
+  } catch { /* fall through */ }
+  return siteUrl();
+}
+
+function cors(req: Request): Record<string, string> {
+  const origin = req.headers.get('Origin') ?? '';
+  const headers: Record<string, string> = {
+    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Vary': 'Origin',
+  };
+  if (allowed.includes(origin)) headers['Access-Control-Allow-Origin'] = origin;
+  return headers;
+}
+
+const originAllowed = (req: Request) => allowed.includes(req.headers.get('Origin') ?? '');
+
+const json = (body: unknown, status = 200, headers: Record<string, string> = {}) =>
+  new Response(JSON.stringify(body), { status, headers: { ...headers, 'Content-Type': 'application/json' } });
+
+function env(name: string): string {
+  const v = Deno.env.get(name);
+  if (!v) throw new Error(`Missing secret ${name}. Set it with: supabase secrets set ${name}=...`);
+  return v;
+}
+
+// Service key for server-side writes. Supabase injects this into every Edge Function.
+const serviceKey = () => Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? env('SUPABASE_SECRET_KEY');
+
+const siteUrl = () => env('SITE_URL').replace(/\/$/, '');
+
+// ---------- email-templates.js (namespaced as T) ----------
+const T = (() => {
 // SPXTR order email templates.
 // Plain JavaScript on purpose: the Supabase email functions import this file, and so does
 // tools/email-preview.html, so the preview is exactly what customers receive.
@@ -7,10 +65,10 @@
 // apps reliably understand. Dark by design, to match the store.
 
 const ESC = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
-export const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ESC[c]);
+const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ESC[c]);
 
 const ZERO_DECIMAL = new Set(['bif', 'clp', 'djf', 'gnf', 'jpy', 'kmf', 'krw', 'mga', 'pyg', 'rwf', 'ugx', 'vnd', 'vuv', 'xaf', 'xof', 'xpf']);
-export function money(minor, currency = 'aud') {
+function money(minor, currency = 'aud') {
   const c = String(currency || 'aud').toLowerCase();
   return new Intl.NumberFormat('en-AU', { style: 'currency', currency: c.toUpperCase() }).format((minor || 0) / (ZERO_DECIMAL.has(c) ? 1 : 100));
 }
@@ -31,7 +89,7 @@ const GOLD_DIM = '#6B5219';
 
 const orderNo = o => `SPX-${o.number}`;
 const firstName = o => String(o.name || '').trim().split(/\s+/)[0] || '';
-export const orderLink = (site, o) => (o.access_key ? `${site}/order/?o=${o.number}&k=${encodeURIComponent(o.access_key)}` : '');
+const orderLink = (site, o) => (o.access_key ? `${site}/order/?o=${o.number}&k=${encodeURIComponent(o.access_key)}` : '');
 const abs = (site, u) => (!u ? '' : /^https:\/\//.test(u) ? u : `${site}/${String(u).replace(/^\//, '')}`);
 let regionName = c => c;
 try { const dn = new Intl.DisplayNames(['en'], { type: 'region' }); regionName = c => { try { return dn.of(c) || c; } catch { return c; } }; } catch { /* older runtime */ }
@@ -168,7 +226,7 @@ function textItems(o, list, prices = true) {
 // =====================================================================
 // 1. Order confirmation (to the customer)
 // =====================================================================
-export function confirmationEmail({ site, accent, order: o, items: list, supportEmail, instagram }) {
+function confirmationEmail({ site, accent, order: o, items: list, supportEmail, instagram }) {
   accent = readable(accent);
   const link = orderLink(site, o);
   const name = firstName(o);
@@ -207,7 +265,7 @@ export function confirmationEmail({ site, accent, order: o, items: list, support
 // =====================================================================
 // 2. Shipped (to the customer)
 // =====================================================================
-export function shippingEmail({ site, accent, order: o, items: list, supportEmail, instagram }) {
+function shippingEmail({ site, accent, order: o, items: list, supportEmail, instagram }) {
   accent = readable(accent);
   const link = orderLink(site, o);
   const name = firstName(o);
@@ -254,7 +312,7 @@ export function shippingEmail({ site, accent, order: o, items: list, supportEmai
 // =====================================================================
 // 3. New order alert (to the shop)
 // =====================================================================
-export function shopNotificationEmail({ site, accent, order: o, items: list, instagram }) {
+function shopNotificationEmail({ site, accent, order: o, items: list, instagram }) {
   accent = readable(accent);
   const addr = addressLines(o.shipping_address);
   const overseas = String(o.currency).toLowerCase() !== 'aud';
@@ -294,7 +352,7 @@ export function shopNotificationEmail({ site, accent, order: o, items: list, ins
 // =====================================================================
 // 4. New review waiting for approval (to the shop)
 // =====================================================================
-export function reviewAlertEmail({ site, accent, review, productName, instagram }) {
+function reviewAlertEmail({ site, accent, review, productName, instagram }) {
   accent = readable(accent);
   const stars = '★'.repeat(review.rating) + '☆'.repeat(5 - review.rating);
   const body = `
@@ -322,7 +380,7 @@ export function reviewAlertEmail({ site, accent, review, productName, instagram 
 // =====================================================================
 // 5. "You're on the list" (to the customer, while the store is closed)
 // =====================================================================
-export function launchWelcomeEmail({ site, accent, instagram, unsubUrl }) {
+function launchWelcomeEmail({ site, accent, instagram, unsubUrl }) {
   accent = readable(accent);
   const body = `
     <div style="margin:0 0 16px;padding:18px 20px;background:${C.panel};border-left:4px solid ${accent};font:400 15px/1.6 ${BODY};color:${C.bone}">
@@ -346,7 +404,7 @@ export function launchWelcomeEmail({ site, accent, instagram, unsubUrl }) {
 // =====================================================================
 // 6. "We're live" (to everyone on the launch list)
 // =====================================================================
-export function launchLiveEmail({ site, accent, instagram, unsubUrl, headline, message }) {
+function launchLiveEmail({ site, accent, instagram, unsubUrl, headline, message }) {
   accent = readable(accent);
   const body = `
     ${message ? `<div style="margin:0 0 16px;padding:18px 20px;background:${C.panel};border-left:4px solid ${accent};font:400 15px/1.6 ${BODY};color:${C.bone}">${esc(message)}</div>` : ''}
@@ -403,7 +461,7 @@ const STATUS_COPY = {
 };
 
 // To the applicant, the moment they apply.
-export function applicationAppliedEmail({ site, accent, instagram, kind, ref, name }) {
+function applicationAppliedEmail({ site, accent, instagram, kind, ref, name }) {
   const what = kind === 'model' ? 'model' : 'ambassador';
   accent = GOLD;                                   // these are the gold ones
   const body = `
@@ -427,7 +485,7 @@ export function applicationAppliedEmail({ site, accent, instagram, kind, ref, na
 }
 
 // To the crew, so an application is never missed.
-export function applicationAlertEmail({ site, accent, app }) {
+function applicationAlertEmail({ site, accent, app }) {
   const what = app.kind === 'model' ? 'Model' : 'Ambassador';
   accent = GOLD;
   const row = (k, v) => (v ? `<tr><td style="padding:6px 14px 6px 0;font:500 11px/1.5 ${MONO};letter-spacing:.1em;text-transform:uppercase;color:${C.muted};white-space:nowrap;vertical-align:top">${esc(k)}</td>
@@ -463,7 +521,7 @@ export function applicationAlertEmail({ site, accent, app }) {
 }
 
 // To the applicant whenever the crew moves their application along.
-export function applicationStatusEmail({ site, accent, instagram, kind, ref, name, status, message }) {
+function applicationStatusEmail({ site, accent, instagram, kind, ref, name, status, message }) {
   accent = GOLD;
   const copy = STATUS_COPY[status] || STATUS_COPY.new;
   const body = `
@@ -490,7 +548,7 @@ export function applicationStatusEmail({ site, accent, instagram, kind, ref, nam
 // =====================================================================
 // 8. The welcome, once someone is accepted and set up
 // =====================================================================
-export function crewWelcomeEmail({ site, instagram, name, role, code, percent, message }) {
+function crewWelcomeEmail({ site, instagram, name, role, code, percent, message }) {
   const accent = GOLD;
   const first = String(name || '').trim().split(/\s+/)[0] || '';
   const asWhat = role === 'model' ? 'a model' : role === 'both' ? 'an ambassador and a model' : 'an ambassador';
@@ -524,7 +582,7 @@ export function crewWelcomeEmail({ site, instagram, name, role, code, percent, m
 // =====================================================================
 // 9. Left in the cart (Stripe tells us the checkout expired)
 // =====================================================================
-export function abandonedCartEmail({ site, accent, instagram, name, items = [], total, currency = 'aud' }) {
+function abandonedCartEmail({ site, accent, instagram, name, items = [], total, currency = 'aud' }) {
   accent = readable(accent);
   const first = String(name || '').trim().split(/\s+/)[0] || '';
   const rows = items.slice(0, 4).map(i => `
@@ -557,7 +615,7 @@ export function abandonedCartEmail({ site, accent, instagram, name, items = [], 
 // =====================================================================
 // 10. "How did it hold up?" — sent a while after something shipped
 // =====================================================================
-export function reviewRequestEmail({ site, accent, instagram, order, items = [] }) {
+function reviewRequestEmail({ site, accent, instagram, order, items = [] }) {
   accent = readable(accent);
   const first = String(order.name || '').trim().split(/\s+/)[0] || '';
   const link = `${site}/order/?o=${order.number}&k=${encodeURIComponent(order.access_key)}#items`;
@@ -587,3 +645,186 @@ export function reviewRequestEmail({ site, accent, instagram, order, items = [] 
     text: `How's the kit holding up?\n\nLeave a review: ${link}`,
   };
 }
+  return { abandonedCartEmail, applicationAlertEmail, applicationAppliedEmail, applicationStatusEmail, confirmationEmail, crewWelcomeEmail, esc, launchLiveEmail, launchWelcomeEmail, money, orderLink, reviewAlertEmail, reviewRequestEmail, shippingEmail, shopNotificationEmail };
+})();
+
+// ---------- email.ts ----------
+// Order emails, sent through Resend (resend.com). Optional: with no RESEND_API_KEY set,
+// nothing is sent and Stripe's own receipt emails can be switched on instead.
+// The designs live in email-templates.js (shared with tools/email-preview.html).
+
+
+const money = T.money;
+const emailConfigured = () => !!Deno.env.get('RESEND_API_KEY') && !!Deno.env.get('EMAIL_FROM');
+
+// Brand details from the admin (Customise colour, Instagram handle, contact email), so emails
+// always match the site. Falls back to SPXTR lime.
+const brand = { accent: '#D4FF1F', instagram: '', supportEmail: '' };
+async function loadAccent(db: { from: (t: string) => any }) {
+  try {
+    const { data } = await db.from('site_settings').select('data').eq('id', 1).maybeSingle();
+    const s = data?.data ?? {};
+    if (/^#[0-9a-fA-F]{6}$/.test(s.theme?.accent ?? '')) brand.accent = s.theme.accent;
+    if (typeof s.instagram === 'string') brand.instagram = s.instagram;
+    if (typeof s.footer?.email === 'string' && s.footer.email.includes('@')) brand.supportEmail = s.footer.email;
+  } catch { /* keep the defaults */ }
+}
+
+// Which address an email comes from. Orders use EMAIL_FROM. The launch list can use its own
+// address (LAUNCH_EMAIL_FROM) so shop mail and announcements can sit on different domains.
+const senderFor = (kind: 'order' | 'launch' | 'application' = 'order') =>
+  (kind === 'launch' ? Deno.env.get('LAUNCH_EMAIL_FROM')
+    : kind === 'application' ? (Deno.env.get('APPLICATIONS_EMAIL_FROM') || Deno.env.get('LAUNCH_EMAIL_FROM'))
+    : '') || Deno.env.get('EMAIL_FROM');
+
+// kind 'order' = one-to-one mail about something the customer did (confirmation, shipping). It
+// carries no bulk headers, which is what keeps it out of Gmail's Promotions tab.
+// kind 'bulk' = the launch announcement: it must carry a one-click unsubscribe, both because Gmail
+// expects it from bulk senders and because the law does.
+async function sendEmail(
+  to: string, subject: string, html: string, text?: string, from?: string,
+  opts: { kind?: 'order' | 'bulk'; unsubUrl?: string } = {},
+) {
+  const headers: Record<string, string> = {};
+  if (opts.kind === 'bulk' && opts.unsubUrl) {
+    headers['List-Unsubscribe'] = `<${opts.unsubUrl}>`;
+    headers['List-Unsubscribe-Post'] = 'List-Unsubscribe=One-Click';
+  } else {
+    // Marks each one as its own conversation rather than part of a campaign.
+    headers['X-Entity-Ref-ID'] = crypto.randomUUID();
+  }
+  const res = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${Deno.env.get('RESEND_API_KEY')}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      from: from || Deno.env.get('EMAIL_FROM'),
+      to: [to],
+      subject,
+      html,
+      text,
+      headers,
+      reply_to: Deno.env.get('SHOP_EMAIL') || undefined,
+    }),
+  });
+  if (!res.ok) throw new Error(`Resend ${res.status}: ${await res.text()}`);
+}
+
+interface Order {
+  number: number; email: string; name: string; phone?: string; currency: string;
+  amount_subtotal: number; amount_shipping: number; amount_tax: number; amount_total: number;
+  amount_total_aud?: number | null; shipping_method?: string;
+  shipping_address: Record<string, string | null | undefined>;
+  carrier?: string; tracking_number?: string; tracking_url?: string | null;
+  access_key?: string;
+}
+interface Item { name: string; size: string; quantity: number; line_total: number; sku?: string; image?: string }
+
+const ctx = (site: string, order: Order, items: Item[]) => ({
+  site, order, items, accent: brand.accent, instagram: brand.instagram,
+  // The shop inbox (SHOP_EMAIL) comes first: it's the one that's actually watched.
+  supportEmail: Deno.env.get('SHOP_EMAIL') || brand.supportEmail || '',
+});
+const orderLink = (site: string, o: Order) => T.orderLink(site, o);
+const confirmationEmail = (site: string, o: Order, items: Item[]) => T.confirmationEmail(ctx(site, o, items));
+const shippingEmail = (site: string, o: Order, items: Item[]) => T.shippingEmail(ctx(site, o, items));
+const shopNotificationEmail = (site: string, o: Order, items: Item[]) => T.shopNotificationEmail(ctx(site, o, items));
+const reviewAlertEmail = (site: string, review: Record<string, unknown>, productName: string) =>
+  T.reviewAlertEmail({ site, review, productName, accent: brand.accent, instagram: brand.instagram });
+
+const applicationAppliedEmail = (site: string, kind: string, ref: string, name: string) =>
+  T.applicationAppliedEmail({ site, accent: brand.accent, instagram: brand.instagram, kind, ref, name });
+const applicationAlertEmail = (site: string, app: Record<string, unknown>) =>
+  T.applicationAlertEmail({ site, accent: brand.accent, app });
+const applicationStatusEmail = (site: string, o: { kind: string; ref: string; name: string; status: string; message?: string }) =>
+  T.applicationStatusEmail({ site, accent: brand.accent, instagram: brand.instagram, ...o });
+
+const crewWelcomeEmail = (site: string, o: { name: string; role: string; code?: string; percent?: number; message?: string }) =>
+  T.crewWelcomeEmail({ site, instagram: brand.instagram, ...o });
+
+const abandonedCartEmail = (site: string, o: { name?: string; items: unknown[]; total?: number; currency?: string }) =>
+  T.abandonedCartEmail({ site, accent: brand.accent, instagram: brand.instagram, ...o });
+
+const reviewRequestEmail = (site: string, order: Record<string, unknown>, items: unknown[]) =>
+  T.reviewRequestEmail({ site, accent: brand.accent, instagram: brand.instagram, order, items });
+
+const launchWelcomeEmail = (site: string, unsubUrl: string) =>
+  T.launchWelcomeEmail({ site, unsubUrl, accent: brand.accent, instagram: brand.instagram });
+const launchLiveEmail = (site: string, unsubUrl: string, headline?: string, message?: string) =>
+  T.launchLiveEmail({ site, unsubUrl, headline, message, accent: brand.accent, instagram: brand.instagram });
+
+// ---------- the function ----------
+// SPXTR — "how did it hold up?"
+//
+// Finds orders that shipped a while ago, have not been asked yet, and writes to the customer
+// once asking them to review what they bought. Nothing else in the site asks for reviews, so
+// without this the review system only ever hears from people who go looking for it.
+//
+// It is called on a schedule by the database (pg_cron), not by a browser, so it is guarded by a
+// secret rather than a login:
+//
+//   POST  header  x-spx-cron: <CRON_SECRET>
+//   body  { "days": 7, "limit": 50, "dry": false }   -- all optional
+//
+// Deploy: supabase functions deploy review-requests --no-verify-jwt --use-api
+// Then schedule it (see supabase/REVIEW-REQUESTS.md).
+
+
+const db = createClient(env('SUPABASE_URL'), serviceKey(), { auth: { persistSession: false } });
+
+// Compared in constant time so a wrong secret can't be guessed a character at a time.
+function sameSecret(given: string, wanted: string) {
+  if (given.length !== wanted.length) return false;
+  let diff = 0;
+  for (let i = 0; i < given.length; i++) diff |= given.charCodeAt(i) ^ wanted.charCodeAt(i);
+  return diff === 0;
+}
+
+Deno.serve(async req => {
+  if (req.method !== 'POST') return json({ error: 'Method not allowed' }, 405);
+
+  const secret = Deno.env.get('CRON_SECRET') ?? '';
+  if (!secret) return json({ error: 'CRON_SECRET is not set, so this cannot be called safely.' }, 500);
+  if (!sameSecret(req.headers.get('x-spx-cron') ?? '', secret)) return json({ error: 'Not allowed' }, 403);
+
+  const b = await req.json().catch(() => ({}));
+  const days = Math.min(90, Math.max(1, Number(b.days) || 7));
+  const limit = Math.min(200, Math.max(1, Number(b.limit) || 50));
+  const dry = !!b.dry;
+
+  if (!emailConfigured()) return json({ error: 'Email isn\'t set up (RESEND_API_KEY / EMAIL_FROM).' }, 400);
+
+  const cutoff = new Date(Date.now() - days * 86400_000).toISOString();
+  const { data: orders, error } = await db
+    .from('orders')
+    .select('id, number, email, name, access_key, shipped_at, order_items(name, size, quantity)')
+    .in('status', ['shipped', 'delivered'])
+    .lte('shipped_at', cutoff)
+    .is('review_asked_at', null)
+    .not('email', 'is', null)
+    .order('shipped_at', { ascending: true })
+    .limit(limit);
+  if (error) return json({ error: error.message }, 500);
+
+  const due = orders ?? [];
+  if (dry) return json({ ok: true, due: due.length, orders: due.map(o => o.number) });
+  if (!due.length) return json({ ok: true, sent: 0, failed: 0 });
+
+  await loadAccent(db);
+  let sent = 0; const failed: number[] = [];
+  for (const o of due) {
+    try {
+      const m = reviewRequestEmail(siteUrl(), o, o.order_items ?? []);
+      // One-to-one mail about something they bought, so it carries no bulk headers.
+      await sendEmail(o.email, m.subject, m.html, m.text, undefined, { kind: 'order' });
+      await db.from('orders').update({ review_asked_at: new Date().toISOString() }).eq('id', o.id);
+      sent++;
+    } catch (err) {
+      failed.push(o.number);
+      console.error(`Review request for SPX-${o.number} failed`, err);
+      // Stamped anyway: a bad address would otherwise be retried every day forever.
+      await db.from('orders').update({ review_asked_at: new Date().toISOString() }).eq('id', o.id);
+    }
+    await new Promise(r => setTimeout(r, 120));          // stay under Resend's rate limit
+  }
+  return json({ ok: true, sent, failed: failed.length, failedOrders: failed });
+});

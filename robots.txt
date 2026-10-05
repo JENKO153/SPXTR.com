@@ -5,4 +5,8 @@ Disallow: /order/
 Disallow: /order-complete/
 Disallow: /order.html
 Disallow: /order-complete.html
+Disallow: /ambassadors/
+Disallow: /models/
 Allow: /
+
+Sitemap: https://spxtr.com/sitemap.xml

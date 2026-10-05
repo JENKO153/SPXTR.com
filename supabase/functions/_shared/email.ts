@@ -91,6 +91,12 @@ export const applicationStatusEmail = (site: string, o: { kind: string; ref: str
 export const crewWelcomeEmail = (site: string, o: { name: string; role: string; code?: string; percent?: number; message?: string }) =>
   T.crewWelcomeEmail({ site, instagram: brand.instagram, ...o });
 
+export const abandonedCartEmail = (site: string, o: { name?: string; items: unknown[]; total?: number; currency?: string }) =>
+  T.abandonedCartEmail({ site, accent: brand.accent, instagram: brand.instagram, ...o });
+
+export const reviewRequestEmail = (site: string, order: Record<string, unknown>, items: unknown[]) =>
+  T.reviewRequestEmail({ site, accent: brand.accent, instagram: brand.instagram, order, items });
+
 export const launchWelcomeEmail = (site: string, unsubUrl: string) =>
   T.launchWelcomeEmail({ site, unsubUrl, accent: brand.accent, instagram: brand.instagram });
 export const launchLiveEmail = (site: string, unsubUrl: string, headline?: string, message?: string) =>

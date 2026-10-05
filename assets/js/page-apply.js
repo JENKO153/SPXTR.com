@@ -41,6 +41,14 @@
   const ig = instagramLink();
 
   document.title = `${door.eyebrow} — ${STORE.name}`;
+  // Kept out of search until the store opens — these are for people we send the link to.
+  SEO.describe({
+    title: `${door.eyebrow} — ${STORE.name}`,
+    description: A.lead,
+    image: safeUrl(door.image || SITE.hero?.image || ''),
+    path: door.path,
+    noindex: true,
+  });
   $('#apply-intake').textContent = `${A.intake} // applications open`;
   $('#apply-foot-note').textContent = A.closing || '';
   if (ig && !$('.ap__foot .link-arrow')) $('#apply-by').insertAdjacentHTML('beforebegin',
@@ -332,6 +340,7 @@
         if (file.size > 5 * 1024 * 1024) throw new Error(`${file.name} is over 5MB. Send a smaller one, or paste a link instead.`);
         photos[input.name.replace(/_file$/, '')] = await asData(file);
       }
+      spxTrack?.('Application sent', { as: alsoBox?.checked ? 'both' : DOOR });
       const r = await CMS.applyToJoin({
         kind: alsoBox?.checked ? 'both' : DOOR,
         name: String(answers.legal_name || '').trim(),

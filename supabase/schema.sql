@@ -521,6 +521,8 @@ alter table public.orders add column if not exists access_key text not null
   default encode(extensions.gen_random_bytes(18), 'hex');
 -- When the order's items were put back in stock (refund or delete), so it can't happen twice.
 alter table public.orders add column if not exists restocked_at timestamptz;
+-- When we asked them what they thought of it, so nobody is asked twice.
+alter table public.orders add column if not exists review_asked_at timestamptz;
 
 create table if not exists public.order_items (
   id bigserial primary key,

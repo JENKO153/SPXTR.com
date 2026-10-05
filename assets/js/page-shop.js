@@ -70,6 +70,18 @@
     bg.style.backgroundImage = img ? `url("${img.replace(/"/g, '%22')}")` : '';
     $('#page-head').classList.toggle('page-head--hero', !!img);
     document.title = `${title.replace(/[“”]/g, '')} — ${STORE.name}`;
+    // The page people actually landed on: a named page (Moto, Military…) or the whole shop.
+    SEO.describe({
+      title: `${title.replace(/[“”]/g, '')} — ${STORE.name}`,
+      // A page's own intro if it has one, otherwise a sentence about it — never a UI label,
+      // which is what Google would otherwise print under the result.
+      description: page?.intro
+        || (page ? `${page.name} gear from ${STORE.name}: built heavy, tested hard, made to take a hit.`
+                 : `Every ${STORE.name} drop in one place — hoodies, tees, outerwear, headwear and gear.`),
+      image: safeUrl(page?.hero_image || ''),
+      path: page ? `shop/?page=${encodeURIComponent(page.slug)}` : 'shop/',
+    });
+    SEO.breadcrumbs(page ? [['Home', ''], ['Shop', 'shop/'], [page.name, `shop/?page=${page.slug}`]] : [['Home', ''], ['Shop', 'shop/']]);
   }
 
   function render() {

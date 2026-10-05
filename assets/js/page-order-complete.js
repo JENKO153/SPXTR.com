@@ -24,6 +24,8 @@
           <a href="${orderLinkFor(order)}">Save this link</a> to check on your order any time.</div></div>
         ${renderOrderView(order)}`;
       document.title = `Order SPX-${order.number} confirmed — SPXTR`;
+      // The one that matters: a sale, with what it was worth.
+      spxTrack?.('Purchase', { value: String(Math.round((order.total || 0) / 100)) });
       return;
     }
     await new Promise(r => setTimeout(r, i < 5 ? 1000 : 2000));

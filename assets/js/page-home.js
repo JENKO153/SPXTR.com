@@ -54,6 +54,15 @@ function renderHome() {
   bar.style.setProperty('--count', Math.max(1, promises.length));
   bar.hidden = !promises.length;
 
+  // What a search result and a shared link show for the homepage.
+  SEO.describe({
+    title: `${STORE.name} — ${SITE.hero?.line1 || 'Built for the send'}`.replace(/\s+/g, ' '),
+    description: SITE.hero?.subtitle || SITE.footer?.blurb,
+    image: safeUrl(SITE.hero?.image || ''),
+    path: '',
+  });
+  SEO.organisation({ name: STORE.name, instagram: instagramLink(), email: SITE.footer?.email || '' });
+
   const words = marqueeWords();                    // the season's lines if one is running
   fillTicker($('#marquee'), words.map(w => `<span>${esc(w)}</span>`).join(''));
   fillTicker.redraw = () => renderChrome() || renderHome();   // keep both tickers across the screen
